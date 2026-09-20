@@ -1,0 +1,9 @@
+The patched Unity Render Streaming runtime is bundled for one-URL UPM installation.
+Canonical source: vendor/com.unity.renderstreaming in this repository.
+Upstream: https://github.com/Unity-Technologies/UnityRenderStreaming
+Upstream revision: d4e8dc834f67cb4de920e3168b9db50141693052
+License: Unity Companion License; see LICENSE.md and upstream source headers.
+Regenerate with npm run build in service. Do not edit the generated runtime here.
+Packaging rewrites the default asset path and assigns stable LiveWork-specific
+asset GUIDs, updating serialized references accordingly.
+Do not install com.unity.renderstreaming separately: it duplicates this assembly.

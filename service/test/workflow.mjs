@@ -1,7 +1,7 @@
 import { chromium, expect } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const config = JSON.parse(await readFile(new URL('../.local/host.json', import.meta.url), 'utf8'));
+const config = JSON.parse(await readFile(process.env.LIVEWORK_HOST_CONFIG || new URL('../../sample/Library/LiveWork/host.json', import.meta.url), 'utf8'));
 const snapshot = async () => JSON.parse(await readFile('../.artifacts/sample-live.json', 'utf8'));
 async function until(predicate, timeout = 10000) {
   const end = Date.now() + timeout;
@@ -19,7 +19,7 @@ try {
   await page.goto(`http://127.0.0.1:${config.port}`);
   await page.locator('#code').fill(config.code); await page.locator('#pairing button').click();
   await page.waitForFunction(() => ['stopped', 'playing'].includes(document.getElementById('status').textContent));
-  if (await page.locator('#play').isEnabled()) await page.locator('#play').click();
+  if (await page.locator('#play').getAttribute('aria-label') === 'Play') await page.locator('#play').click();
   await status('playing'); await videoReady(); record('video and audio tracks', await page.locator('#video').evaluate(v => v.srcObject.getTracks().map(t => t.kind)));
   await page.locator('#stage').focus(); await page.keyboard.down('d'); await until(s => s.key); await page.keyboard.up('d'); await until(s => !s.key); record('remote keyboard down/up');
   const box = await page.locator('#stage').boundingBox();
@@ -40,11 +40,11 @@ try {
   await page.locator('#step').click(); const stepped = await until(s => s.frames > paused.frames); assert.equal(stepped.frames, paused.frames + 1); assert.equal(stepped.paused, true); record('Pause and exactly one frame', { before: paused.frames, after: stepped.frames });
   await page.screenshot({ path: '../.artifacts/livework-paused.png' });
   await page.locator('#pause').click(); await status('playing');
-  await page.locator('#preset').selectOption('720x1280'); await page.locator('#resize').click(); await until(s => s.width === 720 && s.height === 1280); await videoReady();
+  await page.locator('#preset').selectOption('720x1280'); await until(s => s.width === 720 && s.height === 1280); await videoReady();
   await page.waitForFunction(() => document.getElementById('video').videoHeight > document.getElementById('video').videoWidth); record('portrait resolution and video reconnect');
   await page.setViewportSize({ width: 412, height: 915 }); await page.screenshot({ path: '../.artifacts/livework-mobile.png' });
   await page.reload(); await status('playing'); await videoReady(); record('browser reload and authenticated reconnect');
-  await page.locator('#stop').click(); await status('stopped'); await until(s => !s.playing); record('Stop keeps control connection alive');
+  await page.getByRole('button', { name: 'Stop', exact: true }).click(); await status('stopped'); await until(s => !s.playing); record('Stop keeps control connection alive');
   await page.locator('#play').click(); await status('playing'); await videoReady(); record('Play reconnect after domain reload');
   await page.locator('#stage').focus(); await page.keyboard.down('d'); await until(s => s.key); await page.close(); await until(s => !s.key); record('disconnect clears held input');
   assert.deepEqual(errors, []); record('no browser JS errors');

@@ -1,0 +1,7 @@
+QR Code Generator by Manuel Bleichenbacher, based on Nayuki's QR Code generator.
+Source: https://github.com/manuelbl/QrCodeGenerator
+Version: v1.6.0 (a4b90ea1772e87193e3350ab5e29439e56fe0f95)
+License: MIT; see LICENSE.txt and source headers.
+Unity adaptation: removed System.Drawing imports and ToBitmap; LiveWork renders
+GetModule() into a Texture2D with a four-module white quiet zone.
+These sources are compiled only in the LiveWork.Editor assembly.

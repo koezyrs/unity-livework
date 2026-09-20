@@ -55,9 +55,10 @@ namespace Unity.RenderStreaming
 
         public static bool AutomaticStreaming
         {
-            get => s_settings.automaticStreaming;
+            get { if (s_settings == null) LoadSettings(); return s_settings.automaticStreaming; }
             set
             {
+                if (s_settings == null) LoadSettings();
                 if (s_settings.automaticStreaming == value)
                 {
                     return;
@@ -107,7 +108,7 @@ namespace Unity.RenderStreaming
 #if UNITY_EDITOR
         private static void InitializeInEditor()
         {
-            if (EditorBuildSettings.TryGetConfigObject(EditorBuildSettingsConfigKey, out RenderStreamingSettings settingsAsset))
+            if (EditorBuildSettings.TryGetConfigObject(EditorBuildSettingsConfigKey, out RenderStreamingSettings settingsAsset) && settingsAsset != null)
             {
                 s_settings = settingsAsset;
             }

@@ -67,3 +67,22 @@ test('map only the video content, with portrait/landscape letterboxing', () => {
   assert.deepEqual(pointInVideo(0, 500, rect, 720, 1280, true), { x: 0, y: .5 });
   assert.equal(pointInVideo(0, 0, rect, 0, 0), null);
 });
+
+test('shutdown requires the host token, closes clients and releases its port', async () => {
+  const app = await createLiveWork({ port: 0, code: '123456' });
+  const base = `http://127.0.0.1:${app.port}`;
+  try {
+    assert.equal((await fetch(base + '/api/shutdown')).status, 405);
+    assert.equal((await fetch(base + '/api/shutdown', { method: 'POST' })).status, 403);
+    assert.equal((await fetch(base + '/api/shutdown', { method: 'POST', headers: { Authorization: 'Bearer wrong' } })).status, 403);
+    assert.equal((await fetch(base + '/api/shutdown', { method: 'POST', headers: { Authorization: `Bearer ${app.hostToken}`, Origin: 'https://attacker.invalid' } })).status, 403);
+    const editor = await open(`ws://127.0.0.1:${app.port}/editor?token=${app.hostToken}`);
+    const disconnected = new Promise(resolve => editor.once('close', resolve));
+    const response = await fetch(base + '/api/shutdown', { method: 'POST', headers: { Authorization: `Bearer ${app.hostToken}` } });
+    assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ok: true });
+    await disconnected; await app.close();
+    assert.equal(app.server.listening, false);
+    const restarted = await createLiveWork({ port: app.port });
+    await restarted.close();
+  } finally { await app.close(); }
+});

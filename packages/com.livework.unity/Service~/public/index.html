@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>LiveWork</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <section id="connect" aria-label="Connect to Unity">
+    <form id="pairing">
+      <div class="pair-brand"><span class="brand-mark" aria-hidden="true">L<span>W</span></span>LiveWork</div>
+      <h1>Connect to your editor</h1>
+      <p class="intro">Enter the code from LiveWork to Unity</p>
+      <label for="code">Pairing code</label>
+      <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required aria-describedby="pairError">
+      <button id="connectButton" class="primary" type="submit">Connect</button>
+      <p id="pairError" class="error" role="alert"></p>
+      <div class="qr-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg><p>Or scan the QR code in LiveWork<br>with your phone’s camera.</p></div>
+    </form>
+  </section>
+  <div id="workspace" hidden>
+    <header id="toolbar">
+      <div class="identity"><span class="brand">LiveWork</span><span id="status" role="status" data-state="offline">offline</span></div>
+      <div class="transport" role="group" aria-label="Unity playback">
+        <button id="play" class="icon-button" disabled aria-label="Play" title="Play"></button>
+        <button id="pause" class="icon-button" disabled aria-label="Pause" title="Pause" aria-pressed="false"></button>
+        <button id="step" class="icon-button" disabled aria-label="Next frame" title="Next frame"></button>
+      </div>
+    <section id="settings" aria-label="Game view settings">
+      <label class="resolution-label" for="preset">Resolution</label>
+      <select id="preset" disabled aria-label="Game resolution">
+        <option value="">Current</option><option value="720x1280">720 × 1280</option>
+        <option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option>
+        <option value="1920x1080">1920 × 1080</option><option value="custom">Custom…</option>
+      </select>
+      <div class="view-actions">
+        <button id="mute" class="icon-button" aria-pressed="true" aria-label="Unmute" title="Unmute"></button>
+        <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Enter fullscreen"></button>
+      </div>
+      <form id="dimensions" hidden>
+        <label>Width<input id="width" type="number" min="240" max="1920" step="2" value="1280" required></label>
+        <span>×</span><label>Height<input id="height" type="number" min="240" max="1920" step="2" value="720" required></label>
+        <button id="resize" type="submit">Apply</button>
+        <p id="resolutionError" class="error" role="alert"></p>
+      </form>
+    </section>
+    </header>
+    <main id="stage" tabindex="0" aria-label="Interactive Unity Game View">
+      <video id="video" autoplay playsinline muted></video><canvas id="lastFrame" hidden></canvas>
+      <div id="overlay" role="status">Waiting for Unity…</div>
+      <div id="message" role="status" hidden></div>
+      <button id="exitFullscreen" class="icon-button" aria-label="Exit fullscreen" title="Exit fullscreen" hidden></button>
+      <div id="contextMenu" hidden><button id="lock">Lock pointer</button></div>
+    </main>
+  </div>
+</body>
+</html>

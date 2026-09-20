@@ -7,9 +7,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "esbuild upstream/websockethandler.ts --bundle --platform=node --format=cjs --outfile=generated/signaling.cjs",
+    "build": "esbuild upstream/websockethandler.ts --bundle --platform=node --format=cjs --outfile=generated/signaling.cjs && node scripts/bundle-service.mjs && node scripts/bundle-renderstreaming.mjs",
     "start": "node server.mjs",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:ui": "node test/ui.mjs",
+    "check:bundle": "node scripts/bundle-service.mjs --check && node scripts/bundle-renderstreaming.mjs --check"
   },
   "dependencies": {
     "ws": "^8.18.3"

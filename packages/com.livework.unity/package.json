@@ -4,9 +4,19 @@
   "version": "0.1.0",
   "unity": "6000.2",
   "description": "Play your local Unity Game View from an Android or PC browser over Tailscale.",
+  "documentationUrl": "https://github.com/koezyrs/unity-livework#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koezyrs/unity-livework.git"
+  },
+  "keywords": ["editor", "streaming", "webrtc", "remote", "playtesting"],
   "dependencies": {
-    "com.unity.renderstreaming": "3.1.0-exp.9",
     "com.unity.webrtc": "3.0.0",
-    "com.unity.inputsystem": "1.17.0"
+    "com.unity.inputsystem": "1.17.0",
+    "com.unity.ugui": "2.0.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.screencapture": "1.0.0"
   }
 }

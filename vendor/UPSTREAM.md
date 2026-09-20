@@ -29,3 +29,15 @@ and reconnect do not require advancing gameplay.
 `service/public/upstream` contains unmodified browser RenderStreaming/Peer/logger
 modules. The LiveWork server wraps signaling with pairing and single-controller
 authorization. Original license files accompany both copies.
+
+## Single-package installation
+
+The patched runtime is bundled in LiveWork's `ThirdParty/RenderStreaming` by
+`service/scripts/bundle-renderstreaming.mjs`. Its default asset path is rewritten
+for the containing package, and asset GUIDs plus serialized references receive
+stable LiveWork-specific identities. No separate Render Streaming package is required.
+Installing both would duplicate assemblies; the upstream Editor wizard and
+sample projects are intentionally not included in the LiveWork package.
+
+`RenderStreaming.cs` also tolerates a missing settings asset during first import
+or migration, before the Package Manager finishes importing the bundled asset.

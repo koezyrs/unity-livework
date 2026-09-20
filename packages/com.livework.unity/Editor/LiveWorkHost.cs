@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Net.Http;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
@@ -42,19 +44,25 @@ namespace LiveWork.Editor
         public static bool Enabled => SessionState.GetBool("LiveWork.Enabled", false);
         public static string Status { get; private set; } = "Disabled";
         public static HostConfig Config { get; private set; }
+        public static bool IsStopping { get; private set; }
+        public static string ServerError { get; private set; }
+        public static string ConfigPath => Path.GetFullPath(Path.Combine(Application.dataPath, "../Library/LiveWork/host.json"));
+        public static bool ServerReady => Enabled && !IsStopping && socket?.ReadyState == WebSocketState.Open && Config != null;
+        public static string ServerStatus => LiveWorkService.IsPreparing ? "Preparing service…" : IsStopping ? "Ending server…" : ServerError != null ? "Server error" : ServerReady ? "Server running" : Enabled ? "Connecting to server…" : "Server stopped";
         public static string ServiceDirectory {
             get {
-                var saved = EditorPrefs.GetString("LiveWork.ServiceDirectory", "");
+                var saved = EditorPrefs.GetString("LiveWork.ServiceDirectory." + Application.dataPath, "");
                 if (Directory.Exists(saved)) return saved;
-                var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(LiveWorkHost).Assembly);
-                return Path.GetFullPath(Path.Combine(package.resolvedPath, "../../service"));
+                return LiveWorkService.ResolveDirectory();
             }
-            set => EditorPrefs.SetString("LiveWork.ServiceDirectory", value);
+            set => EditorPrefs.SetString("LiveWork.ServiceDirectory." + Application.dataPath, value);
         }
 
         static LiveWorkHost()
         {
             EditorApplication.delayCall += () => {
+                var shutdown = SessionState.GetString("LiveWork.Shutdown", "");
+                if (!string.IsNullOrEmpty(shutdown)) _ = EndServerAsync(JsonUtility.FromJson<HostConfig>(shutdown));
                 if (Enabled && EditorApplication.isPlaying && SessionState.GetBool("LiveWork.PlayReady", false)) {
                     // Package pre.8 initializes this only on entering Play, not on script reload.
                     typeof(Unity.WebRTC.WebRTC).GetMethod("RuntimeInitializeOnLoadMethod", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)?.Invoke(null, null);
@@ -77,14 +85,21 @@ namespace LiveWork.Editor
 
         public static void Enable()
         {
+            if (IsStopping) throw new InvalidOperationException("Wait for the server to finish stopping.");
+            if (Enabled) return;
+            ServerError = null;
             if (Application.unityVersion != "6000.3.11f1" && Application.unityVersion != "6000.2.7f2") throw new NotSupportedException("This preview supports Unity 6000.3.11f1 and 6000.2.7f2 only.");
             if (Unity.RenderStreaming.RenderStreaming.AutomaticStreaming) throw new InvalidOperationException("Disable Render Streaming > Automatic Streaming first; LiveWork manages its own session.");
             if (!File.Exists(Path.Combine(ServiceDirectory, "server.mjs"))) throw new DirectoryNotFoundException("Choose the LiveWork service folder first.");
             if (!File.Exists(Path.Combine(ServiceDirectory, "generated/signaling.cjs"))) throw new InvalidOperationException("Run npm ci and npm run build inside the service folder first.");
             ReadConfig();
             if (Config == null || !ProcessAlive(Config.pid)) {
+                if (File.Exists(ConfigPath)) File.Delete(ConfigPath);
+                Config = null;
                 var info = new ProcessStartInfo("node", "server.mjs") { WorkingDirectory = ServiceDirectory, UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
                 info.EnvironmentVariables["LIVEWORK_BIND"] = "0.0.0.0";
+                info.EnvironmentVariables["LIVEWORK_PORT"] = "0";
+                info.EnvironmentVariables["LIVEWORK_STATE_DIRECTORY"] = Path.GetDirectoryName(ConfigPath);
                 Process.Start(info);
             }
             SessionState.SetBool("LiveWork.Enabled", true);
@@ -96,7 +111,7 @@ namespace LiveWork.Editor
 
         static bool ProcessAlive(int pid) { try { return Process.GetProcessById(pid).ProcessName.StartsWith("node", StringComparison.OrdinalIgnoreCase); } catch { return false; } }
         static void ReadConfig() {
-            try { Config = JsonUtility.FromJson<HostConfig>(File.ReadAllText(Path.Combine(ServiceDirectory, ".local/host.json"))); }
+            try { Config = JsonUtility.FromJson<HostConfig>(File.ReadAllText(ConfigPath)); }
             catch { Config = null; }
         }
         public static string BrowserUrl {
@@ -204,6 +219,41 @@ namespace LiveWork.Editor
             pending = null;
         }
 
+        public static Task EndServerAsync() => EndServerAsync(Config);
+        static async Task EndServerAsync(HostConfig config)
+        {
+            if (IsStopping) return;
+            IsStopping = true; ServerError = null;
+            if (config != null) SessionState.SetString("LiveWork.Shutdown", JsonUtility.ToJson(config));
+            Disable();
+            try {
+                if (config == null) throw new InvalidOperationException("Server address is unavailable. Wait for the service to start and try again.");
+                using (var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(3) }) {
+                    var url = $"http://127.0.0.1:{config.port}";
+                    bool reachable;
+                    try { using (var health = await client.GetAsync(url + "/api/health")) reachable = true; }
+                    catch (HttpRequestException) { reachable = false; }
+                    if (reachable) {
+                        using (var request = new HttpRequestMessage(HttpMethod.Post, url + "/api/shutdown")) {
+                            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", config.hostToken);
+                            using (var response = await client.SendAsync(request)) {
+                                if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Server could not stop. Check that it uses the current LiveWork service version, then retry End server.");
+                            }
+                        }
+                        var deadline = DateTime.UtcNow.AddSeconds(10);
+                        while (true) {
+                            await Task.Delay(150);
+                            try { using (var health = await client.GetAsync(url + "/api/health")) { } }
+                            catch (HttpRequestException) { break; }
+                            if (DateTime.UtcNow >= deadline) throw new TimeoutException("Server is still shutting down. Retry End server.");
+                        }
+                    }
+                }
+                Config = null;
+            } catch (Exception ex) { ServerError = ex.Message; }
+            finally { IsStopping = false; SessionState.EraseString("LiveWork.Shutdown"); }
+        }
+
         static void Execute(Command cmd)
         {
             if (cmd.v != 1) { Reply(cmd, false, "Unsupported protocol"); return; }
@@ -257,28 +307,4 @@ namespace LiveWork.Editor
         }
     }
 
-    public sealed class LiveWorkWindow : EditorWindow
-    {
-        [MenuItem("Window/LiveWork")]
-        public static void Open() => GetWindow<LiveWorkWindow>("LiveWork");
-        void OnInspectorUpdate() => Repaint();
-        void OnGUI()
-        {
-            GUILayout.Label("Unity LiveWork", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox("Android / PC browser • Unity 6000.3.11f1 / 6000.2.7f2\nInput System: touch, mouse, keyboard\nLegacy: touch only (no mouse/keyboard/axes)", MessageType.Info);
-            EditorGUILayout.LabelField("Service", LiveWorkHost.ServiceDirectory);
-            if (GUILayout.Button("Choose service folder")) { var path = EditorUtility.OpenFolderPanel("LiveWork service", LiveWorkHost.ServiceDirectory, ""); if (!string.IsNullOrEmpty(path)) LiveWorkHost.ServiceDirectory = path; }
-            if (GUILayout.Button(LiveWorkHost.Enabled ? "Disable LiveWork" : "Enable LiveWork")) {
-                try { if (LiveWorkHost.Enabled) LiveWorkHost.Disable(); else LiveWorkHost.Enable(); }
-                catch (Exception ex) { EditorUtility.DisplayDialog("LiveWork", ex.Message, "OK"); }
-            }
-            EditorGUILayout.LabelField("Status", LiveWorkHost.Status);
-            if (LiveWorkHost.Enabled && LiveWorkHost.Config != null) {
-                EditorGUILayout.SelectableLabel(LiveWorkHost.BrowserUrl, GUILayout.Height(20));
-                EditorGUILayout.LabelField("Pairing code", LiveWorkHost.Config.code);
-                if (GUILayout.Button("Copy URL")) EditorGUIUtility.systemCopyBuffer = LiveWorkHost.BrowserUrl;
-                if (GUILayout.Button("Open browser")) Application.OpenURL(LiveWorkHost.BrowserUrl);
-            }
-        }
-    }
 }

@@ -1,5 +1,36 @@
 # Verification — 2026-09-20
 
+## UI and single-URL packaging refresh
+
+The refreshed web UI and bundled installation were checked on Windows with
+Unity 6000.3.11f1, Node 22.20.0, and Edge/Playwright:
+
+- Four service tests passed, including token-protected shutdown, disconnected
+  clients, and reuse of the released port.
+- Browser UI checks passed for code/QR pairing, invalid codes, exclusive control,
+  Play/Stop/Pause/Resume/Step, preset/custom resolutions, mute and fullscreen.
+- Desktop, landscape and 320 px layouts passed overflow/touch-target checks.
+  Transport controls are centered on desktop; settings align right on the same row.
+- Live Unity workflow passed video/audio, keyboard, mouse, uGUI, multi-touch,
+  exact single-frame stepping, resolution changes and browser/Play reconnection.
+- Recovery passed paused resize/reconnect, scene reload, compile/domain reload,
+  compile failure protection and recovery after fixing code.
+- A clean Unity project installed from **one local Git URL** using the same UPM
+  package-path layout as the documented GitHub URL. Registry dependencies resolved
+  without a separate Render Streaming package. The bundled service prepared under
+  Library, and Start → End → Start → End succeeded.
+- End/Start in the live sample preserved Play Mode. A subsequent audio check
+  measured RMS 0.0251, with no browser JavaScript errors.
+- Both generated bundle checks and `git diff --check` passed.
+
+This does not verify a GitHub release: the working-tree changes must still be
+committed and pushed. Editor screenshot capture was unavailable because the
+Windows capture helper returned `SetIsBorderRequired: No such interface supported`.
+The Editor code compiled and ran; web screenshots were reviewed directly.
+Physical Android acceptance remains outstanding as described below.
+
+The sections below also retain evidence from the earlier preview verification.
+
 ## Tested environment
 
 Windows host, graphics-enabled Unity Editors **6000.3.11f1** and **6000.2.7f2**,

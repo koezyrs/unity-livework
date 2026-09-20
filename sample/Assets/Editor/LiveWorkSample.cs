@@ -37,12 +37,15 @@ public static class LiveWorkSample
             key = SampleGame.NewKey, mouse = SampleGame.NewMouse, x = SampleGame.LastMouse.x, y = SampleGame.LastMouse.y,
             touches = SampleGame.NewTouches, legacyTouches = SampleGame.LegacyTouches, peakTouches = SampleGame.PeakNewTouches, peakLegacyTouches = SampleGame.PeakLegacyTouches,
             width = GameViewBridge.Size.x, height = GameViewBridge.Size.y
+            , serverReady = LiveWorkHost.ServerReady, serverStopping = LiveWorkHost.IsStopping, serverError = LiveWorkHost.ServerError
             , touchX = SampleGame.LastTouch.x, touchY = SampleGame.LastTouch.y, touchDevice = SampleGame.TouchDevice, pointerEvent = SampleGame.PointerEvent
         }, true));
         // Test-only local shutdown signal. Not available in installed LiveWork packages.
         if (File.Exists("../.artifacts/close-sample")) { File.Delete("../.artifacts/close-sample"); LiveWorkHost.Disable(); EditorApplication.Exit(0); }
         if (File.Exists("../.artifacts/refresh-sample")) { File.Delete("../.artifacts/refresh-sample"); AssetDatabase.Refresh(); }
+        if (File.Exists("../.artifacts/start-server") && !LiveWorkHost.IsStopping) { File.Delete("../.artifacts/start-server"); LiveWorkHost.Disable(); LiveWorkHost.Enable(); }
+        if (File.Exists("../.artifacts/end-server")) { File.Delete("../.artifacts/end-server"); _ = LiveWorkHost.EndServerAsync(); }
         if (File.Exists("../.artifacts/reload-scene")) { File.Delete("../.artifacts/reload-scene"); if (EditorApplication.isPlaying) UnityEngine.SceneManagement.SceneManager.LoadScene("LiveWorkDemo"); }
     }
-    [Serializable] class Snapshot { public bool playing, paused, key, mouse; public int frames, clicks, touches, legacyTouches, peakTouches, peakLegacyTouches, width, height; public float x, y, touchX, touchY; public string touchDevice, pointerEvent; }
+    [Serializable] class Snapshot { public bool playing, paused, key, mouse, serverReady, serverStopping; public int frames, clicks, touches, legacyTouches, peakTouches, peakLegacyTouches, width, height; public float x, y, touchX, touchY; public string touchDevice, pointerEvent, serverError; }
 }

@@ -1,6 +1,6 @@
 import { chromium } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
-const config = JSON.parse(await readFile(new URL('../.local/host.json', import.meta.url), 'utf8'));
+const config = JSON.parse(await readFile(process.env.LIVEWORK_HOST_CONFIG || new URL('../../sample/Library/LiveWork/host.json', import.meta.url), 'utf8'));
 const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
@@ -12,7 +12,7 @@ try {
   await page.locator('#pairing button').click();
   await page.locator('#play').waitFor({ state: 'visible' });
   await page.waitForFunction(() => ['stopped', 'playing'].includes(document.getElementById('status').textContent), null, { timeout: 15000 });
-  if (await page.locator('#play').isEnabled()) await page.locator('#play').click();
+  if (await page.locator('#play').getAttribute('aria-label') === 'Play') await page.locator('#play').click();
   await page.waitForFunction(() => document.getElementById('video').videoWidth > 0 && document.getElementById('video').readyState >= 2, null, { timeout: 60000 });
   await page.screenshot({ path: '../.artifacts/livework-desktop.png' });
   console.log('VIDEO', await page.locator('#video').evaluate(v => ({ width: v.videoWidth, height: v.videoHeight, state: v.readyState, tracks: v.srcObject.getTracks().map(t => t.kind) })));
@@ -27,7 +27,7 @@ try {
   });
   if (audio < .0001) throw new Error(`No audible signal received: rms=${audio}`);
   console.log('AUDIO_RMS', audio);
-  console.log('STATS', await page.locator('#stats').textContent());
+
   console.log('ERRORS', JSON.stringify(errors));
 } catch (error) {
   await page.screenshot({ path: '../.artifacts/livework-failure.png' });

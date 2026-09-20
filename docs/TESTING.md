@@ -5,7 +5,13 @@
 Run `npm test` from `service`. Uses Node's test runner and real local WebSockets;
 no Unity installation is needed. Covers pairing failures, Unicode input, origin
 checks, exclusive control, validation, forwarding/results, disconnect reset and
-portrait/landscape letterboxing.
+portrait/landscape letterboxing, plus host-authorized shutdown and port reuse.
+
+Run `npm run test:ui` for browser checks with a simulated Editor. These cover code
+and QR pairing, exclusive control, transport states, custom resolution validation,
+mute, fullscreen and layouts down to 320 px. Microsoft Edge is required.
+Run `npm run check:bundle` before committing to verify that the Git package's web
+service and patched Render Streaming runtime match their canonical sources.
 
 ## Unity and browser integration
 
@@ -19,11 +25,11 @@ Start the sample from PowerShell in the repo root:
 ```powershell
 New-Item -ItemType Directory -Force .artifacts | Out-Null
 Start-Process 'C:\Program Files\Unity\Hub\Editor\6000.3.11f1\Editor\Unity.exe' `
-  -ArgumentList '-projectPath "E:\PERSONAL_WORK\unity-livework\sample" -executeMethod LiveWorkSample.Launch -liveworkTest -logFile "E:\PERSONAL_WORK\unity-livework\.artifacts\sample-session.log"'
+  -ArgumentList '-projectPath "E:\PERSONAL_WORK\unity-livework\sample" -executeMethod LiveWorkSample.Launch -liveworkTest -logFile "E:\PERSONAL_WORK\unity-livework\.artifacts\sample-session.log"' -WindowStyle Hidden
 ```
 
 Adjust the two absolute repo paths for your checkout. Wait for the Editor to
-finish loading and create `service/.local/host.json`, then run:
+finish loading and create `sample/Library/LiveWork/host.json`, then run:
 
 ```powershell
 cd service
@@ -40,7 +46,7 @@ compile failure/fix. It intentionally introduces a compile error **only** in
 `sample/Assets/ReloadFixture.cs` and restores valid code in `finally`.
 
 Diagnostics and screenshots are written under `.artifacts/`. Test-only file
-commands (`refresh-sample`, `reload-scene`, `close-sample`) are enabled solely by
+commands (`refresh-sample`, `reload-scene`, `start-server`, `end-server`, `close-sample`) are enabled solely by
 the `-liveworkTest` argument; they are not part of the distributable package.
 Create `.artifacts/close-sample` to gracefully stop the sample test Editor.
 
@@ -48,9 +54,19 @@ For a copy of the sample named `compat-sample`, set
 `$env:LIVEWORK_TEST_PROJECT = 'compat-sample'` before running `recovery.mjs` so
 its compile fixture targets the correct project. Keep only one sample Editor
 enabled on the service. `browser-smoke.mjs` also measures received audio energy;
+set `LIVEWORK_HOST_CONFIG` to the absolute `Library/LiveWork/host.json` path when
+using another project (the default is the sample's configuration);
 set `LIVEWORK_TEST_URL` to test the host's Tailscale HTTP address. For an installed
 game already in Play Mode, `installed-smoke.mjs` checks media and captures a
 mobile-layout screenshot without sending gameplay input or changing Play state.
+
+## One-URL Git installation
+
+Use a clean project and add only the LiveWork Git dependency shown in the README.
+Check that no standalone `com.unity.renderstreaming` package is registered and
+that Unity resolves WebRTC/Input System/uGUI automatically. On first Start,
+verify npm preparation occurs under `Library/LiveWork`, not PackageCache.
+Check Start → End → Start, a released port after End, and unchanged Play Mode.
 
 ## Original Legacy compatibility probe
 

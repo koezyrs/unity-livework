@@ -1,131 +1,250 @@
 # Unity LiveWork
 
-Chơi thử **Game View đang chạy trong Unity Editor** từ trình duyệt Android hoặc PC.
-Video/audio dùng Unity Render Streaming + WebRTC; điều khiển Editor đi qua dịch vụ
-Node.js độc lập nên trang web vẫn hoạt động khi Stop hoặc reload code.
+Play your Unity Editor's Game View from an Android or desktop browser.
 
-**Bản preview 0.1.0 · Windows · Unity 6000.3.11f1 / 6000.2.7f2 · Tailscale / localhost.**
+LiveWork streams video and audio over WebRTC and sends touch, mouse, and keyboard
+input back to your game. A compact, single-row web toolbar controls Play Mode,
+pause, frame stepping, resolution, sound, and fullscreen.
 
-## Hỗ trợ hiện tại
+**Development preview · Windows host · Unity 6 · Tailscale or localhost**
 
-| Tính năng | Trạng thái |
-|---|---|
-| Game View gồm UI, video và âm thanh | Có |
-| Play / Stop / Pause / Resume / Next Frame | Có |
-| Đổi resolution thực của Game View | Preset + nhập kích thước; hỗ trợ khi pause |
-| Input System | Multi-touch, chuột, cuộn, bàn phím, pointer lock |
-| Legacy Input | **Chỉ touch; chưa hỗ trợ keyboard, mouse hoặc axis** |
-| Both | Input System + Legacy touch, giữ nguyên input module của game |
-| Reconnect | Reload web, Stop/Play, scene change, compile/domain reload |
-| Thiết bị | Chrome Android; Chrome/Edge PC |
+## Features
 
-Phạm vi Legacy được điều chỉnh sau kiểm chứng: `QueueGameViewInputEvent` và
-`GameView.SendEvent` phát sự kiện OnGUI nhưng không thay đổi `Input.GetKey`,
-`GetMouseButton` và `GetAxis`. **Không cần sửa code gameplay** cho các input được
-hỗ trợ. Không có shim âm thầm thay `UnityEngine.Input`.
+- **One Git URL installation.** Includes the patched Render Streaming runtime and
+  web service. Unity resolves the remaining package dependencies automatically.
+- **Code or QR pairing.** Enter the six-digit code, or scan the Editor's QR code
+  with your phone's camera to open and pair the browser.
+- **Unity-style controls.** Play/Stop, Pause/Resume, and Step.
+- **Game-first web UI.** One compact toolbar above the Game View, with a black and
+  silver theme. The Editor window uses standard Unity controls.
+- **Real Game View resolution.** Choose a preset or enter custom dimensions.
+- **Video, audio, and input.** Stream the game without changing gameplay scripts.
+- **Session recovery.** Reconnect after browser reload, Stop/Play, scene changes,
+  and Unity script/domain reloads.
+- **Per-project service.** Each Editor project uses its own configuration and port.
 
-## Chạy project mẫu
+## Requirements
 
-1. Cài Unity **6000.3.11f1** (hoặc **6000.2.7f2**), Node.js **22 trở lên** và Tailscale trên host/client.
-2. Chuẩn bị dịch vụ từ thư mục repo:
+| Component | Supported configuration |
+| --- | --- |
+| Host OS | Windows |
+| Unity Editor | **6000.3.11f1** or **6000.2.7f2**; other versions are rejected by this preview |
+| Node.js | **22 or newer**, including npm, available on PATH |
+| Git | Installed and available to Unity Package Manager |
+| Network | Tailscale on both devices, or localhost on the host |
+| Browser | Chrome on Android; Chrome or Edge on desktop |
+| Audio | An active AudioListener in the game |
+| Keyboard/mouse input | Active Input Handling set to **Input System** or **Both** |
 
-   ```powershell
-   .\scripts\setup.ps1
+Node.js, Git, and Tailscale are host applications, not Unity packages. Install them
+before starting LiveWork. Restart Unity after installing Node.js so it receives
+the updated PATH.
+
+## Installation
+
+### Unity Package Manager — one Git URL
+
+1. Open **Window → Package Manager**.
+2. Select **+ → Install package from git URL**.
+3. Paste:
+
+   ```text
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity
    ```
 
-3. Trong Unity Hub, thêm project `sample`, mở scene `Assets/LiveWorkDemo.unity`.
-4. Mở **Window → LiveWork**, chọn **Enable LiveWork**. Package tự chạy dịch vụ
-   Node ẩn nếu chưa có. Nếu service folder không tìm thấy, chọn thư mục `service`
-   trong repo bằng **Choose service folder**.
-5. Mở URL hiển thị trong cửa sổ LiveWork trên điện thoại/PC cùng tailnet, nhập mã
-   ghép nối sáu chữ số và bấm **Play** trên web.
-6. Chạm/click vào vùng game để điều khiển. **Sound on** bật âm thanh. Nút thu gọn
-   thanh công cụ và **Fullscreen** dành thêm diện tích cho game.
+4. Wait for Unity to resolve dependencies and finish compiling.
+5. Open **Window → LiveWork**.
 
-Scene mẫu có cube quay, phím **D** để di chuyển, nút UI đếm click, số touch của
-cả hai hệ input và một âm thử nhỏ. Dùng Pause/Next Frame để quan sát bộ đếm frame.
+**No second Git URL or separate Render Streaming installation is needed.**
+The package contains the patched Render Streaming runtime and web service.
+Unity installs WebRTC, Input System, uGUI, and the required Unity modules.
 
-## Cài vào project Unity khác
+Append `#<commit-sha>` to pin a revision. New changes become available through the
+GitHub URL after they are committed and pushed.
 
-Giữ repo này ở một đường dẫn cố định:
+### Upgrading from the original two-package setup
 
-1. Unity Package Manager → **Install package from disk** → chọn
-   `vendor/com.unity.renderstreaming/package.json`.
-2. Cài tiếp `packages/com.livework.unity/package.json` theo cách tương tự.
-3. Nếu project đã bật **Render Streaming → Automatic Streaming**, tắt tính năng
-   đó trước khi bật LiveWork, để tránh hai phiên streaming chạy đồng thời.
-4. Mở **Window → LiveWork**, chọn `service` nếu cần và bật LiveWork.
+Remove the separate `com.unity.renderstreaming` entry from the project's
+`Packages/manifest.json` before installing this version. LiveWork now contains
+that runtime; installing both creates duplicate assemblies.
 
-LiveWork không đổi Active Input Handling, scene hoặc input bindings của project.
-Chọn **Input System** hoặc **Both** trong Player Settings nếu cần chuột/bàn phím
-từ PC. Project chỉ dùng Legacy vẫn nhận touch từ điện thoại. Game cần có
-AudioListener đang hoạt động để phát âm thanh qua stream.
+If your project uses Render Streaming independently, review the migration before
+removing it. This preview does not support a second standalone Render Streaming
+package alongside the bundled runtime.
 
-Runtime objects của LiveWork được tạo tạm trong Play Mode, sống qua scene changes,
-và bị hủy khi Stop/Disable. Khi Disable, lựa chọn Game View và run-in-background
-trước phiên được khôi phục. Dịch vụ web tiếp tục sống độc lập; đóng bằng Ctrl+C
-nếu chạy thủ công hoặc dừng đúng process Node đã khởi chạy dịch vụ.
+### Local development installation
 
-## Tailscale và mạng
-
-- Dịch vụ mặc định dùng TCP **8080**, chỉ chấp nhận nguồn localhost hoặc địa chỉ
-  Tailscale. Cả HTTP và WebSocket đều kiểm tra nguồn; pairing áp dụng trước khi
-  cho phép điều khiển/signaling. Một browser tab điều khiển tại một thời điểm.
-- Máy có Tailscale sẽ được hiển thị URL `http://<tailscale-ip>:8080`. Nếu không có,
-  URL localhost chỉ dùng được trên host.
-- WebRTC truyền media/input trực tiếp qua ICE host candidates. Không cần STUN
-  công khai hoặc TURN cho luồng tailnet này. ACL/firewall vẫn phải cho phép kết
-  nối giữa hai thiết bị, gồm traffic UDP của Unity/WebRTC.
-- Nếu Windows Firewall chặn, cho phép Node và Unity trên mạng phù hợp. Công cụ
-  không tự sửa firewall, router, Tailscale ACL hoặc bật public internet.
-- Không mở port này ra internet công khai: public hosting, TLS ngoài tailnet và
-  TURN chưa thuộc bản đầu. Pointer lock/fullscreen phụ thuộc trình duyệt và secure
-  context; có thể dùng HTTPS qua Tailscale Serve nếu trình duyệt yêu cầu.
-
-Chạy dịch vụ thủ công:
+Clone this repository, then run from its root:
 
 ```powershell
-cd service
-npm start
-# Tùy chọn trước khi chạy: $env:LIVEWORK_PORT = '8081'
-# Chỉ localhost: $env:LIVEWORK_BIND = '127.0.0.1'
+.\scripts\setup.ps1
 ```
 
-Mã ghép nối đổi khi service restart. Cookie phiên có thời hạn 24 giờ; mất kết nối
-sẽ nhả input, không phát lại lệnh điều khiển cũ. Thông tin host nằm trong
-`service/.local/host.json` và được gitignore.
+Open the included `sample` project, or use **Install package from disk** and select
+`packages/com.livework.unity/package.json` in an existing project. Do not install
+the package under `vendor` separately.
 
-## Resolution và giới hạn
+## Quick start
 
-- Thay đổi **kích thước render của game**, không chỉ phóng to video. Kích thước
-  chẵn 240–1920 mỗi cạnh, tối đa 2.073.600 pixel. Letterboxing không nhận touch mới.
-- Giữ resolution Game View hiện tại khi bật. Video mặc định 30 FPS, cạnh dài tối
-  đa 1280 và bitrate tối đa 8 Mbps; input luôn được quy đổi theo resolution game.
-- Khi game pause, streaming/signaling vẫn chạy; Next Frame gọi một bước Editor.
-  Unity quyết định số lần FixedUpdate bên trong bước đó.
-- Giữ desktop host hoạt động và Game View mở. Chưa bảo đảm hoạt động khi host
-  sleep, khóa Windows hoặc Unity minimize. Không dùng Unity `-batchmode` để stream.
-- Chưa hỗ trợ iOS, gamepad, cảm biến, IME/bàn phím ảo, nhiều người điều khiển hoặc
-  chạy nhiều Editor trên cùng một service.
-- Game chạy trên host: không mô phỏng hiệu năng, native plugins hay hành vi bản
-  build Android/iOS. Chỉ phiên bản Editor nêu trên được cho phép trong preview.
+1. Open your game scene in Unity.
+2. Open **Window → LiveWork** and click **Start server**.
+3. On the first start, LiveWork prepares its Node dependencies. An npm network
+   connection is required.
+4. Once the status reads **Server running**, open the displayed address on your
+   browser and enter the pairing code. Alternatively, scan the QR code with your
+   phone's camera to open and pair automatically.
+5. Press **Play** in the web toolbar, then click or touch the Game View.
 
-## Kiểm thử và cấu trúc
+For a remote device, both devices must be on the same Tailscale network. A
+`127.0.0.1` address works only on the host computer; the Editor displays a reminder
+when no Tailscale address is available.
+
+Only one browser tab can control an Editor session at a time.
+
+## Controls
+
+### Unity Editor window
+
+The window displays the server status, address, pairing code, and QR code.
+
+| Control | Action |
+| --- | --- |
+| Start server | Prepare and start the project's LiveWork service |
+| End server | Disconnect LiveWork and shut down that service; leave Unity's Play Mode unchanged |
+| Copy URL | Copy the browser address without the pairing code |
+| Open browser | Open the address in the host's browser |
+
+A new server session generates a new pairing code. Ending a session restores the
+previous Game View selection and run-in-background setting.
+
+### Browser toolbar
+
+| Control | Action |
+| --- | --- |
+| Play / Stop | Enter or exit Unity Play Mode |
+| Pause / Resume | Pause gameplay or continue running |
+| Step | Advance one Editor frame while paused |
+| Resolution | Apply a preset immediately; choose **Custom…** for width, height, and Apply |
+| Sound | Toggle audio; playback starts muted |
+| Fullscreen | Show only the game and a small exit button |
+| Right-click the game | Open **Lock pointer** on supported desktop browsers |
+
+All controls share one row. On narrow screens, secondary branding and status text
+are hidden to preserve touch targets and game space. The game retains its aspect
+ratio; black margins are not new touch targets.
+
+Resolution changes affect the actual Game View, not just its browser display.
+Each dimension must be even and between **240 and 1920**, with at most
+**2,073,600 pixels** in total.
+
+## Input support
+
+| Unity input backend | Supported input |
+| --- | --- |
+| Input System | Multi-touch, mouse, scrolling, keyboard, pointer lock |
+| Legacy Input Manager | Touch only |
+| Both | Input System input plus Legacy touch |
+
+Legacy keyboard, mouse, and axes are not supported. LiveWork does not change
+Active Input Handling, action maps, scene input modules, or gameplay scripts.
+Custom device filters and action-map bindings may need project-specific testing.
+
+## Networking and service lifecycle
+
+- Editor-started services use an available port per project. Copy the current
+  address rather than assuming port 8080.
+- Git-installed service files run from `Library/LiveWork/service-<hash>`.
+  Dependencies and runtime data stay outside the immutable UPM package cache.
+- Host configuration lives in `Library/LiveWork/host.json`. It contains local
+  credentials and should not be committed.
+- HTTP and WebSocket access is restricted to localhost and Tailscale addresses.
+  Pairing is required before browser control or signaling.
+- WebRTC sends media and input directly between devices. No public STUN or TURN
+  service is configured.
+- Tailscale ACLs and the firewall must permit the service's TCP port and WebRTC
+  UDP traffic. LiveWork does not modify firewall or network settings.
+
+This preview is intended for private Tailscale or local use, not public internet
+hosting. QR pairing uses the phone's camera; the web page does not request camera
+access.
+
+For service development, `npm start` in `service` runs a standalone service on
+port 8080. `LIVEWORK_PORT` and `LIVEWORK_BIND` override its port and bind address.
+`LIVEWORK_STATE_DIRECTORY` overrides its configuration directory; the manual
+default is `service/.local`. Editor sessions use their own configuration and do
+not attach to an unrelated standalone server.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Start server fails | Install Node.js 22+ with npm, restart Unity, and check the inline error |
+| First-time preparation fails | Check npm connectivity and registry/proxy settings, then retry |
+| Phone cannot open the URL | Connect both devices to Tailscale; do not use localhost on the phone |
+| Another browser is controlling Unity | Close the existing controlling tab, then connect again |
+| QR or pairing code is rejected | Use the current code; restarting the server changes it |
+| Duplicate Render Streaming assembly | Remove the old standalone `com.unity.renderstreaming` dependency |
+| Game ignores keyboard/mouse | Use Input System or Both and check action/device bindings |
+| No audio | Check the scene's AudioListener and tap the sound icon |
+| Play is blocked | Fix compile errors in Unity's Console |
+| Pointer lock/fullscreen unavailable | Use a supported browser; some features require HTTPS or a user gesture |
+| Video is waiting or reconnecting | Keep Unity and Game View active; check the network and Unity Console |
+
+## Limitations
+
+- Supported Editor versions are deliberately pinned in this preview.
+- Streaming targets **30 FPS**, up to **1280 pixels on its longest edge** and
+  **8 Mbps**. A higher Game View resolution does not remove that stream cap.
+- Step advances one Editor frame; Unity determines the FixedUpdate calls within it.
+- Keep the host awake and Game View open. Sleep, locked desktops, minimized Unity,
+  and graphics-free batch-mode streaming are not supported.
+- iOS, gamepads, sensors, IME/virtual keyboards, public TURN hosting, and multiple
+  controllers for one session are outside this preview's scope.
+- Browser touch emulation is not a physical Android hardware test.
+- Gameplay runs on the host. This does not emulate mobile-device performance,
+  native plugins, or Android/iOS build behavior.
+
+## Development and testing
 
 ```powershell
+.\scripts\setup.ps1
 cd service
 npm test
+npm run test:ui
+npm run check:bundle
 ```
 
-Kiểm thử Unity/browser có hướng dẫn riêng tại [docs/TESTING.md](docs/TESTING.md).
-Kết quả và giới hạn kiểm chứng thực tế tại [docs/VERIFICATION.md](docs/VERIFICATION.md).
+- `npm test` builds the service and tests pairing, authorization, control,
+  shutdown, and coordinate mapping.
+- `npm run test:ui` uses Playwright and Microsoft Edge to check the web flow and
+  responsive layouts against a simulated Editor.
+- `npm run check:bundle` checks the committed Git-installable bundles against
+  their source files.
+- `npm run build` regenerates `Service~` and the bundled Render Streaming runtime.
+  Commit those outputs together with changes to their source.
 
-- `packages/com.livework.unity`: UPM package, Editor bridge và input backend.
-- `service`: Node server, giao diện web, signaling lấy từ upstream, kiểm thử.
-- `sample`: Unity project mẫu và bộ kiểm chứng.
-- `vendor`: Render Streaming cố định commit và bản vá có giải thích trong
-  [vendor/UPSTREAM.md](vendor/UPSTREAM.md).
+See [Testing](docs/TESTING.md) for live Unity/browser integration tests and
+[Verification](docs/VERIFICATION.md) for recorded results and remaining checks.
 
-Render Streaming giữ nguyên Unity Companion License và third-party notices.
-Phần mã upstream được tách riêng để đối chiếu khi nâng cấp.
+| Directory | Purpose |
+| --- | --- |
+| `packages/com.livework.unity` | Git-installable Unity package |
+| `service` | Canonical Node service, browser UI, bundling scripts, and tests |
+| `sample` | Unity demo and integration fixtures |
+| `vendor` | Pinned Render Streaming source and documented patches |
+| `docs` | Testing and verification notes |
 
+When reporting an issue, include the Unity version, browser, input backend,
+reproduction steps, and relevant redacted logs. Do not include pairing codes,
+host tokens, or generated host configuration files.
+
+## Third-party licenses
+
+Bundled Render Streaming retains the **Unity Companion License** and its upstream
+notices. The QR encoder is licensed under **MIT**. See
+[Render Streaming provenance](vendor/UPSTREAM.md),
+[Render Streaming license](packages/com.livework.unity/ThirdParty/RenderStreaming/LICENSE.md),
+and [QR encoder license](packages/com.livework.unity/Editor/ThirdParty/QrCodeGenerator/LICENSE.txt).
+
+This repository currently does not declare a separate license for LiveWork-authored
+code. Third-party licenses apply to their respective components.

@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "com.livework.unity": "file:../../packages/com.livework.unity",
+    "com.unity.webrtc": "3.0.0",
+    "com.unity.renderstreaming": "file:../../vendor/com.unity.renderstreaming",
+    "com.unity.inputsystem": "1.17.0",
+    "com.unity.ugui": "2.0.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.physics": "1.0.0",
+    "com.unity.modules.screencapture": "1.0.0",
+    "com.unity.modules.ui": "1.0.0"
+  }
+}

@@ -1,0 +1,41 @@
+{
+    "name": "Unity.RenderStreaming.Sample",
+    "rootNamespace": "",
+    "references": [
+        "Unity.InputSystem",
+        "Unity.XR.ARFoundation",
+        "Unity.XR.ARSubsystems",
+        "Unity.RenderStreaming",
+        "Unity.RenderStreaming.Sample.Stats"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.xr.arfoundation",
+            "expression": "4.1.9",
+            "define": "URS_USE_AR_FOUNDATION"
+        },
+        {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "",
+            "define": "URS_USE_URP_RUNTIME"
+        },
+        {
+            "name": "com.unity.render-pipelines.high-definition",
+            "expression": "",
+            "define": "URS_USE_HDRP_RUNTIME"
+        },
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.1",
+            "define": "INPUTSYSTEM_1_1_OR_NEWER"
+        }
+    ],
+    "noEngineReferences": false
+}

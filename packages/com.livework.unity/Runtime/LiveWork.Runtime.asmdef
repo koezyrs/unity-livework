@@ -1,0 +1,5 @@
+{
+  "name": "LiveWork.Runtime",
+  "references": ["Unity.RenderStreaming", "Unity.WebRTC"],
+  "includePlatforms": []
+}

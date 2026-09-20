@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10151d"><title>Unity LiveWork</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header id="toolbar">
+    <a class="brand" href="/" aria-label="Unity LiveWork home"><span class="mark">LW</span> LiveWork <small>UNITY</small></a>
+    <span id="status" class="status" role="status">Disconnected</span>
+    <div class="actions">
+      <button id="play" class="primary" disabled>▶ Play</button><button id="stop" disabled>■ Stop</button>
+      <button id="pause" disabled>Ⅱ Pause</button><button id="step" disabled title="Advance one Editor frame">▸│ Next frame</button>
+      <button id="mute" aria-pressed="true">♪ Sound off</button><button id="fullscreen">⛶ Fullscreen</button>
+      <button id="hidebar" aria-label="Hide toolbar">⌃</button>
+    </div>
+  </header>
+  <section id="settings" aria-label="Game view settings">
+    <label>Game resolution <select id="preset"><option value="">Current</option><option value="720x1280">Phone · 720 × 1280</option><option value="1280x720">Landscape · 1280 × 720</option><option value="1080x1920">Phone · 1080 × 1920</option><option value="1920x1080">Desktop · 1920 × 1080</option></select></label>
+    <div class="dimensions"><input id="width" type="number" min="240" max="1920" step="2" aria-label="Game width" value="1280"><span>×</span><input id="height" type="number" min="240" max="1920" step="2" aria-label="Game height" value="720"><button id="resize" disabled>Apply</button></div>
+    <button id="lock">Lock pointer</button><span id="inputMode">Touch · mouse · keyboard</span>
+  </section>
+  <main id="stage" tabindex="0" aria-label="Interactive Unity Game View">
+    <video id="video" autoplay playsinline muted></video><canvas id="lastFrame" hidden></canvas>
+    <div id="placeholder"><div class="orb">▶</div><h1>Your game. Wherever you are.</h1><p>Connect to your Unity Editor to start playing.</p></div>
+    <div id="overlay" hidden></div>
+    <button id="showbar" hidden aria-label="Show toolbar">⌄ Controls</button>
+    <form id="pairing" class="card">
+      <span class="eyebrow">CONNECT TO YOUR EDITOR</span><h2>Pair this browser</h2>
+      <p>Enter the code shown in Unity → Window → LiveWork.</p>
+      <label for="code">Pairing code</label><div class="pair-row"><input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required><button class="primary" type="submit">Connect →</button></div>
+      <p id="pairError" class="error" role="alert"></p>
+    </form>
+  </main>
+  <footer><span id="message" role="status">Keep the host and this device connected to Tailscale.</span><span id="stats">— FPS · — Mbps · — RTT</span></footer>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "name": "LiveWork.Editor",
+  "references": ["LiveWork.Runtime", "Unity.RenderStreaming", "Unity.WebRTC", "Unity.InputSystem"],
+  "includePlatforms": ["Editor"]
+}

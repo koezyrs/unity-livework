@@ -1,0 +1,15 @@
+.upstream/
+.artifacts/
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]serSettings/
+**/node_modules/
+.vs/
+*.csproj
+*.sln
+*.slnx
+service/.local/
+service/generated/
+compat-sample/

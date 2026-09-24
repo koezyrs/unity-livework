@@ -12,6 +12,8 @@ namespace LiveWork.Editor
         string qrPayload, localError;
         double copiedUntil;
         Vector2 scroll;
+        static readonly string[] QrTargets = { "Browser", "Android app" };
+        static bool QrForApp { get => EditorPrefs.GetBool("LiveWork.QrForApp", false); set => EditorPrefs.SetBool("LiveWork.QrForApp", value); }
 
         [MenuItem("Window/LiveWork")]
         public static void Open() => GetWindow<LiveWorkWindow>("LiveWork");
@@ -50,8 +52,12 @@ namespace LiveWork.Editor
                 var codeStyle = new GUIStyle(EditorStyles.textField) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
                 EditorGUILayout.SelectableLabel(ready ? LiveWorkHost.Config.code : "— — — — — —", codeStyle, GUILayout.Height(36));
                 GUILayout.Space(12);
+                QrForApp = GUILayout.Toolbar(QrForApp ? 1 : 0, QrTargets) == 1;
+                GUILayout.Space(6);
                 if (ready) {
-                    try { UpdateQr(url + "/#pair=" + Uri.EscapeDataString(LiveWorkHost.Config.code)); }
+                    var pairUrl = url + "/#pair=" + Uri.EscapeDataString(LiveWorkHost.Config.code);
+                    // The LiveWork Android app handles livework:// links and opens the page in its own view.
+                    try { UpdateQr(QrForApp ? "livework://open?url=" + Uri.EscapeDataString(pairUrl) : pairUrl); }
                     catch (Exception ex) { localError = "QR code could not be created: " + ex.Message; }
                 } else if (qr != null) ClearQr();
                 var area = GUILayoutUtility.GetRect(0, 156, GUILayout.ExpandWidth(true));
@@ -60,7 +66,7 @@ namespace LiveWork.Editor
                 if (ready && qr != null) GUI.DrawTexture(rect, qr, ScaleMode.StretchToFill);
                 else GUI.Box(rect, "Start server to connect");
                 GUILayout.Space(6);
-                if (ready) EditorGUILayout.HelpBox(url.Contains("127.0.0.1") ? "Localhost: this address works on this computer only." : "Scan with your phone’s camera to connect.", MessageType.None);
+                if (ready) EditorGUILayout.HelpBox(url.Contains("127.0.0.1") ? "Localhost: this address works on this computer only." : QrForApp ? "Scan with your phone’s camera to open the LiveWork app." : "Scan with your phone’s camera to connect.", MessageType.None);
                 GUILayout.Space(8);
                 bool canEnd = LiveWorkHost.Enabled || LiveWorkHost.Config != null;
                 using (new EditorGUI.DisabledScope(LiveWorkHost.IsStopping || LiveWorkService.IsPreparing || (LiveWorkHost.Enabled && LiveWorkHost.Config == null))) {

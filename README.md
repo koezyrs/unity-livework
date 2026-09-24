@@ -125,6 +125,7 @@ previous Game View selection and run-in-background setting.
 | Pause / Resume | Pause gameplay or continue running |
 | Step | Advance one Editor frame while paused |
 | Resolution | Apply a preset immediately; choose **Custom…** for width, height, and Apply |
+| Quality | Stream quality: **Smooth** for mobile data, **Balanced**, or **Sharp** for fast Wi-Fi |
 | Sound | Toggle audio; playback starts muted |
 | Fullscreen | Show only the game and a small exit button |
 | Right-click the game | Open **Lock pointer** on supported desktop browsers |
@@ -174,6 +175,27 @@ port 8080. `LIVEWORK_PORT` and `LIVEWORK_BIND` override its port and bind addres
 default is `service/.local`. Editor sessions use their own configuration and do
 not attach to an unrelated standalone server.
 
+## Android app
+
+The `android` folder contains a small Android app that shows the same web client
+full screen, without the browser's address bar, and keeps the screen on. The
+phone still needs Tailscale to reach the host. Build and install it as described in
+[android/README.md](android/README.md). In the Unity **LiveWork** window, switch the
+QR option to **Android app** so the phone's camera opens the app directly.
+
+## Performance tips
+
+- **Check the Tailscale path.** Run `tailscale ping <phone-name>` on the host. If it
+  reports `via DERP`, traffic goes through a relay server and adds a lot of delay.
+  A `direct` connection is much faster. Mobile networks with strict NAT often
+  force DERP; try another network or allow UDP port 41641 on the host firewall.
+- **Use Smooth quality on mobile data.** A lower bitrate avoids packet loss, which
+  shows up as stutter and late touches.
+- **Stop Unity from slowing down in the background.** In **Edit → Preferences →
+  General**, set **Interaction Mode** to **No Throttling**.
+- **Use an NVIDIA GPU when possible.** LiveWork prefers H264, which Unity encodes
+  on NVIDIA GPUs. Other hosts fall back to a CPU encoder, which is slower.
+
 ## Troubleshooting
 
 | Symptom | What to check |
@@ -193,8 +215,10 @@ not attach to an unrelated standalone server.
 ## Limitations
 
 - Supported Editor versions are deliberately pinned in this preview.
-- Streaming targets **30 FPS**, up to **1280 pixels on its longest edge** and
-  **8 Mbps**. A higher Game View resolution does not remove that stream cap.
+- Streaming targets **30 FPS**. The **Quality** control sets the stream cap:
+  Smooth (960 pixels on the longest edge, 2.5 Mbps), Balanced (1280 pixels,
+  4 Mbps, default) or Sharp (1280 pixels, 8 Mbps). A higher Game View resolution
+  does not remove that cap.
 - Step advances one Editor frame; Unity determines the FixedUpdate calls within it.
 - Keep the host awake and Game View open. Sleep, locked desktops, minimized Unity,
   and graphics-free batch-mode streaming are not supported.
@@ -230,6 +254,7 @@ See [Testing](docs/TESTING.md) for live Unity/browser integration tests and
 | --- | --- |
 | `packages/com.livework.unity` | Git-installable Unity package |
 | `service` | Canonical Node service, browser UI, bundling scripts, and tests |
+| `android` | Android app that wraps the web client |
 | `sample` | Unity demo and integration fixtures |
 | `vendor` | Pinned Render Streaming source and documented patches |
 | `docs` | Testing and verification notes |

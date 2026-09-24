@@ -178,6 +178,10 @@ LiveWork gives remote control of a developer's Editor. Treat these as hard rules
 
 ## Git, commits, and pull requests
 
+- Branches follow Git Flow: `main` holds released code and `develop` holds
+  integrated work. Start `feature/<name>` from `develop` and merge it back.
+  Start `release/<version>` from `develop` and `hotfix/<version>` from `main`;
+  merge both into `main` and `develop`, and tag the release on `main`.
 - Use [Conventional Commits](https://www.conventionalcommits.org/):
   `<type>(<optional scope>): <description>`. Allowed types: `feat`, `fix`,
   `refactor`, `perf`, `style`, `test`, `docs`, `build`, `ops`, `chore`.

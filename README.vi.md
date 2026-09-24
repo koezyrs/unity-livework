@@ -222,6 +222,18 @@ Cách test với Unity thật: xem [docs/TESTING.md](docs/TESTING.md).
 | `vendor` | Mã nguồn Render Streaming đã ghim phiên bản và các bản vá |
 | `docs` | Giao thức, ghi chú test và file thương hiệu |
 
+### Nhánh
+
+LiveWork dùng Git Flow:
+
+| Nhánh | Tạo từ | Merge vào | Mục đích |
+| --- | --- | --- | --- |
+| `main` | — | — | Code đã phát hành. Mỗi bản phát hành có tag `vX.Y.Z` |
+| `develop` | `main` | — | Code đã tích hợp cho bản phát hành tiếp theo |
+| `feature/<tên>` | `develop` | `develop` | Một tính năng hoặc thay đổi mới |
+| `release/<phiên-bản>` | `develop` | `main` và `develop` | Chuẩn bị phát hành |
+| `hotfix/<phiên-bản>` | `main` | `main` và `develop` | Sửa lỗi gấp cho bản đã phát hành |
+
 Khi báo lỗi, hãy ghi rõ phiên bản Unity, thiết bị và phiên bản trình duyệt hoặc
 app, input backend, các bước tái hiện lỗi và log. Xoá mã kết nối và token khỏi log.
 

@@ -225,6 +225,18 @@ For live Unity tests, see [docs/TESTING.md](docs/TESTING.md).
 | `vendor` | Pinned Render Streaming source and patches |
 | `docs` | Protocol, testing notes, and brand files |
 
+### Branches
+
+LiveWork uses Git Flow:
+
+| Branch | Created from | Merged into | Purpose |
+| --- | --- | --- | --- |
+| `main` | — | — | Released code. Each release is tagged `vX.Y.Z` |
+| `develop` | `main` | — | Integrated work for the next release |
+| `feature/<name>` | `develop` | `develop` | One new feature or change |
+| `release/<version>` | `develop` | `main` and `develop` | Release preparation |
+| `hotfix/<version>` | `main` | `main` and `develop` | Urgent fix for a released version |
+
 When you report a bug, include the Unity version, the device and browser or app
 version, the input backend, the steps to reproduce, and logs. Remove pairing
 codes and tokens from the logs.

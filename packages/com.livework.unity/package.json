@@ -1,15 +1,22 @@
 {
   "name": "com.livework.unity",
   "displayName": "Unity LiveWork",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "unity": "6000.2",
-  "description": "Play your local Unity Game View from an Android or PC browser over Tailscale.",
+  "description": "Stream the Unity Editor Game View to your phone or PC browser and play it live over WebRTC. Touch, mouse, and keyboard input go back to the game. Includes Play/Pause/Step controls, resolution and stream quality settings, QR pairing, and an Android app.",
+  "author": {
+    "name": "Duong",
+    "url": "https://github.com/koezyrs"
+  },
+  "license": "MIT",
   "documentationUrl": "https://github.com/koezyrs/unity-livework#readme",
+  "changelogUrl": "https://github.com/koezyrs/unity-livework/blob/main/packages/com.livework.unity/CHANGELOG.md",
+  "licensesUrl": "https://github.com/koezyrs/unity-livework/blob/main/packages/com.livework.unity/LICENSE.md",
   "repository": {
     "type": "git",
     "url": "https://github.com/koezyrs/unity-livework.git"
   },
-  "keywords": ["editor", "streaming", "webrtc", "remote", "playtesting"],
+  "keywords": ["editor", "streaming", "webrtc", "remote", "playtesting", "mobile", "android", "game view"],
   "dependencies": {
     "com.unity.webrtc": "3.0.0",
     "com.unity.inputsystem": "1.17.0",

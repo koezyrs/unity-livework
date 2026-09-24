@@ -1,6 +1,6 @@
 {
   "name": "unity-livework-service",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,6 +11,7 @@
     "start": "node server.mjs",
     "test": "npm run build && node --test test/*.test.mjs",
     "test:ui": "node test/ui.mjs",
+    "brand": "node scripts/export-brand.mjs",
     "check:bundle": "node scripts/bundle-service.mjs --check && node scripts/bundle-renderstreaming.mjs --check"
   },
   "dependencies": {

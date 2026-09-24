@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the package version
+        id: version
+        run: |
+          version=$(node -p "require('./packages/com.livework.unity/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+
+      - name: Build the signed APK
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.LIVEWORK_KEYSTORE_BASE64 }}
+          LIVEWORK_KEYSTORE_PASSWORD: ${{ secrets.LIVEWORK_KEYSTORE_PASSWORD }}
+          LIVEWORK_KEY_ALIAS: ${{ secrets.LIVEWORK_KEY_ALIAS }}
+          LIVEWORK_KEY_PASSWORD: ${{ secrets.LIVEWORK_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Secret LIVEWORK_KEYSTORE_BASE64 is not set" >&2
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          export LIVEWORK_KEYSTORE_FILE="$RUNNER_TEMP/release.jks"
+          ./gradlew assembleRelease --no-daemon
+          mkdir -p ../dist
+          cp "app/build/outputs/apk/release/LiveWork-${{ steps.version.outputs.version }}-release.apk" ../dist/LiveWork.apk
+          cd ../dist && sha256sum LiveWork.apk > LiveWork.apk.sha256
+
+      - name: Write release notes from the changelog
+        run: |
+          version=${{ steps.version.outputs.version }}
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' packages/com.livework.unity/CHANGELOG.md > notes.md
+          cat >> notes.md <<NOTES
+
+          ## Install
+
+          **Unity package:** in Package Manager, choose **Install package from git URL** and paste:
+
+          \`\`\`text
+          https://github.com/${GITHUB_REPOSITORY}.git?path=/packages/com.livework.unity#${GITHUB_REF_NAME}
+          \`\`\`
+
+          **Android app:** open this page on your phone and download **LiveWork.apk** below.
+          NOTES
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Not a prerelease: releases/latest/download/LiveWork.apk must keep working.
+          gh release create "$GITHUB_REF_NAME" dist/LiveWork.apk dist/LiveWork.apk.sha256 \
+            --title "LiveWork $GITHUB_REF_NAME" --notes-file notes.md --latest

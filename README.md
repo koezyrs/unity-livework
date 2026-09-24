@@ -126,12 +126,13 @@ previous Game View selection and run-in-background setting.
 | Step | Advance one Editor frame while paused |
 | Sound | Toggle audio; playback starts muted |
 | Fullscreen | Show only the game and a small exit button |
-| Menu (☰) | Open **Stream settings**: game resolution and stream quality |
-
-In **Stream settings**, a resolution preset applies immediately; choose **Custom size**
-for width, height, and Apply. Stream quality is **Smooth** for mobile data,
-**Balanced**, or **Sharp** for fast Wi-Fi. Press Escape or × to close it.
+| Menu (☰) | Open **Settings**: game resolution and stream quality |
 | Right-click the game | Open **Lock pointer** on supported desktop browsers |
+
+In **Settings**, pick a game resolution from the list and it applies immediately.
+Choose **Custom size…** to type a width and height, then press Apply. For stream
+quality, pick **Smooth** on mobile data, **Balanced** for most networks, and
+**Sharp** on fast Wi-Fi. Press Escape or × to close Settings.
 
 All controls share one row. On narrow screens, secondary branding and status text
 are hidden to preserve touch targets and game space. The game retains its aspect
@@ -183,8 +184,9 @@ not attach to an unrelated standalone server.
 The `android` folder contains a small Android app that shows the same web client
 full screen, without the browser's address bar, and keeps the screen on. The
 phone still needs Tailscale to reach the host. Build and install it as described in
-[android/README.md](android/README.md). In the Unity **LiveWork** window, switch the
-QR option to **Android app** so the phone's camera opens the app directly.
+[android/README.md](android/README.md). In the Unity **LiveWork** window, set
+**QR code opens** to **Android app** so the phone's camera opens the app directly.
+The app's own scanner reads both QR types.
 
 ## Performance tips
 

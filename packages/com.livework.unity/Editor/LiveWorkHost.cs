@@ -41,6 +41,8 @@ namespace LiveWork.Editor
         static bool playReady;
         static bool originalBackground;
         static string error;
+        // Set while Unity changes Play Mode, so the browser can say why the Editor is reloading.
+        static string playModeChange;
         // Longest stream edge and maximum bitrate (kbps) for each browser quality choice.
         static readonly (string name, int edge, uint bitrate)[] Qualities = { ("smooth", 960, 2500), ("balanced", 1280, 4000), ("sharp", 1280, 8000) };
         static string Quality => SessionState.GetString("LiveWork.Quality", "balanced");
@@ -208,6 +210,7 @@ namespace LiveWork.Editor
         {
             if (state == PlayModeStateChange.EnteredPlayMode) { playReady = true; SessionState.SetBool("LiveWork.PlayReady", true); }
             if (state == PlayModeStateChange.ExitingPlayMode || state == PlayModeStateChange.ExitingEditMode) { playReady = false; SessionState.SetBool("LiveWork.PlayReady", false); }
+            playModeChange = state == PlayModeStateChange.ExitingEditMode ? "Unity is starting Play Mode…" : state == PlayModeStateChange.ExitingPlayMode ? "Unity is stopping Play Mode…" : null;
             if (!Enabled) return;
             if (state == PlayModeStateChange.ExitingPlayMode) StopStream();
             if (state == PlayModeStateChange.EnteredEditMode) error = null;
@@ -314,7 +317,8 @@ namespace LiveWork.Editor
             var size = GameViewBridge.Size;
             var mode = InputMode();
             Status = error != null ? "error" : reloading || EditorApplication.isCompiling ? "reloading" : EditorApplication.isPlaying ? EditorApplication.isPaused ? "paused" : "playing" : "stopped";
-            Send(new HostState { state = Status, message = error ?? "", width = size.x, height = size.y, revision = revision,
+            var reloadMessage = playModeChange ?? (EditorApplication.isCompiling ? "Unity is compiling scripts…" : "Unity is reloading scripts…");
+            Send(new HostState { state = Status, message = error ?? (Status == "reloading" ? reloadMessage : ""), width = size.x, height = size.y, revision = revision,
                 frame = EditorApplication.isPlaying ? Time.frameCount : 0, inputMode = mode == 0 ? "legacy-touch" : mode == 1 ? "input-system" : "both", quality = Quality, streaming = stream != null,
                 isPlaying = EditorApplication.isPlaying, isPaused = EditorApplication.isPaused });
         }

@@ -3,6 +3,7 @@ package com.livework.client
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,11 +15,14 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.util.TypedValue
@@ -30,8 +34,8 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -39,7 +43,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.ResultPoint
@@ -50,29 +56,33 @@ import com.journeyapps.barcodescanner.DefaultDecoderFactory
 
 /**
  * Shows the LiveWork web client full screen in a WebView.
- * The first screen scans the QR code from the Unity LiveWork window; typing the address is the fallback.
- * `livework://open?url=...` links skip it.
+ * The home screen offers two ways to connect: scan the QR code from the Unity LiveWork window,
+ * or type the address. `livework://open?url=...` links skip it.
  */
 class MainActivity : Activity() {
+    private enum class Screen { Home, Scan, Web }
+
     private lateinit var root: FrameLayout
-    private lateinit var connectView: FrameLayout
+    private lateinit var homeView: LinearLayout
+    private lateinit var homeError: TextView
+    private lateinit var scanView: FrameLayout
     private lateinit var scanner: BarcodeView
     private lateinit var scanFrame: ScanFrameView
-    private lateinit var scanActions: LinearLayout
-    private lateinit var reconnectButton: TextView
     private lateinit var cameraNotice: LinearLayout
-    private lateinit var cameraButton: TextView
-    private lateinit var statusText: TextView
-    private lateinit var addressSheet: LinearLayout
-    private lateinit var addressInput: EditText
-    private lateinit var addressError: TextView
+    private lateinit var scanStatus: TextView
+    private lateinit var loadingView: LinearLayout
+    private lateinit var loadingAddress: TextView
+    private var addressDialog: Dialog? = null
     private var webView: WebView? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var screen = Screen.Home
     private var resumed = false
     private var cameraAsked = false
     private var scanning = false
 
+    private val handler = Handler(Looper.getMainLooper())
+    private val hideLoadingLater = Runnable { setLoading(false) }
     private val prefs by lazy { getSharedPreferences("livework", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,10 +93,14 @@ class MainActivity : Activity() {
         }
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         drawEdgeToEdge()
-        connectView = buildConnectView()
-        root.addView(connectView)
+        homeView = buildHomeView()
+        scanView = buildScanView()
+        loadingView = buildLoadingView()
+        root.addView(homeView, matchParent())
+        root.addView(scanView, matchParent())
+        root.addView(loadingView, matchParent())
         setContentView(root)
-        if (!openFromIntent(intent)) showConnect(null)
+        if (!openFromIntent(intent)) showHome(null)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -98,43 +112,111 @@ class MainActivity : Activity() {
         val data = intent?.data ?: return false
         if (data.scheme != "livework") return false
         val url = addressFromLink(data.toString())
-        if (url == null) showConnect("This link does not contain a valid LiveWork address.") else open(url)
+        if (url == null) showHome("This link does not contain a valid LiveWork address.") else open(url)
         return true
     }
 
-    // ---- Connect screen ----
+    // ---- Home screen ----
 
-    private fun buildConnectView(): FrameLayout {
-        val layout = FrameLayout(this)
-        val match = ViewGroup.LayoutParams.MATCH_PARENT
+    private fun buildHomeView(): LinearLayout {
         val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
-
-        scanner = BarcodeView(this).apply {
-            decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
-        }
-        layout.addView(scanner, FrameLayout.LayoutParams(match, match))
-        scanFrame = ScanFrameView(this)
-        layout.addView(scanFrame, FrameLayout.LayoutParams(match, match))
-
-        val header = LinearLayout(this).apply {
+        val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), dp(28), dp(24), 0)
+            gravity = Gravity.CENTER
+            setPadding(dp(32), dp(32), dp(32), dp(32))
         }
-        header.addView(TextView(this).apply {
+        layout.addView(ImageView(this).apply { setImageResource(R.drawable.logo) }, LinearLayout.LayoutParams(dp(72), dp(72)))
+        layout.addView(TextView(this).apply {
             text = "LiveWork"
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
             typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(20), 0, 0)
         })
-        header.addView(TextView(this).apply {
-            text = "Scan the QR code in the LiveWork window in Unity"
+        layout.addView(TextView(this).apply {
+            text = "Play and test your Unity game from this phone.\nConnect to the LiveWork window in the Unity Editor."
             setTextColor(TEXT_MUTED)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setLineSpacing(0f, 1.3f)
             gravity = Gravity.CENTER
-            setPadding(0, dp(6), 0, 0)
+            setPadding(0, dp(10), 0, dp(36))
         })
-        layout.addView(header, FrameLayout.LayoutParams(match, wrap, Gravity.TOP))
+        val buttons = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, wrap)
+        val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(pillButton("Scan QR code", filled = true) { showScan() }, buttons)
+        column.addView(pillButton("Enter address manually", filled = false) { showAddressDialog() }, LinearLayout.LayoutParams(buttons).apply { topMargin = dp(12) })
+        layout.addView(column, LinearLayout.LayoutParams(dp(320), wrap))
+        homeError = TextView(this).apply {
+            setTextColor(ERROR_TEXT)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(20), 0, 0)
+            visibility = View.GONE
+        }
+        layout.addView(homeError, LinearLayout.LayoutParams(dp(320), wrap))
+        // Keep the column narrow on tablets, but let it shrink on small phones.
+        layout.addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+            val width = minOf(dp(320), view.width - view.paddingLeft - view.paddingRight)
+            for (child in listOf(column, homeError)) if (width > 0 && child.layoutParams.width != width) child.post {
+                child.layoutParams = (child.layoutParams as LinearLayout.LayoutParams).apply { this.width = width }
+            }
+        }
+        return layout
+    }
+
+    private fun showHome(error: String?) {
+        screen = Screen.Home
+        hideCustomView()
+        webView?.let {
+            it.stopLoading()
+            it.loadUrl("about:blank")
+            it.visibility = View.GONE
+        }
+        setLoading(false)
+        homeView.visibility = View.VISIBLE
+        scanView.visibility = View.GONE
+        homeError.text = error ?: ""
+        homeError.visibility = if (error.isNullOrEmpty()) View.GONE else View.VISIBLE
+        setFullScreen(false)
+        updateScanner()
+    }
+
+    // ---- Scan screen ----
+
+    private fun buildScanView(): FrameLayout {
+        val match = ViewGroup.LayoutParams.MATCH_PARENT
+        val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
+        val layout = FrameLayout(this).apply { visibility = View.GONE }
+        scanner = BarcodeView(this).apply { decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE)) }
+        layout.addView(scanner, matchParent())
+        scanFrame = ScanFrameView(this)
+        layout.addView(scanFrame, matchParent())
+
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(16), dp(12), dp(16), 0)
+        }
+        top.addView(TextView(this).apply {
+            text = "✕"
+            contentDescription = "Close scanner"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            gravity = Gravity.CENTER
+            background = RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), rounded(0x66000000, dp(24).toFloat()), null)
+            isClickable = true
+            setOnClickListener { showHome(null) }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { gravity = Gravity.START })
+        top.addView(TextView(this).apply {
+            text = "Point the camera at the QR code\nin the LiveWork window in Unity"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setLineSpacing(0f, 1.25f)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, 0)
+        })
+        layout.addView(top, FrameLayout.LayoutParams(match, wrap, Gravity.TOP))
 
         cameraNotice = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -148,16 +230,10 @@ class MainActivity : Activity() {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             gravity = Gravity.CENTER
         })
-        cameraButton = pillButton("Allow camera", filled = true) { askCamera() }
-        cameraNotice.addView(cameraButton, LinearLayout.LayoutParams(wrap, wrap).apply { topMargin = dp(16) })
+        cameraNotice.addView(pillButton("Allow camera", filled = true) { askCamera() }, LinearLayout.LayoutParams(wrap, wrap).apply { topMargin = dp(16) })
         layout.addView(cameraNotice, FrameLayout.LayoutParams(match, wrap, Gravity.CENTER))
 
-        scanActions = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), 0, dp(24), dp(28))
-        }
-        statusText = TextView(this).apply {
+        scanStatus = TextView(this).apply {
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             gravity = Gravity.CENTER
@@ -165,120 +241,148 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(10), dp(14), dp(10))
             visibility = View.GONE
         }
-        scanActions.addView(statusText, LinearLayout.LayoutParams(wrap, wrap).apply { bottomMargin = dp(16) })
-        reconnectButton = pillButton("", filled = true) { prefs.getString("url", null)?.let { open(it) } }
-        scanActions.addView(reconnectButton, LinearLayout.LayoutParams(wrap, wrap).apply { bottomMargin = dp(10) })
-        scanActions.addView(pillButton("Enter address", filled = false) { showAddressSheet() }, LinearLayout.LayoutParams(wrap, wrap))
-        layout.addView(scanActions, FrameLayout.LayoutParams(match, wrap, Gravity.BOTTOM))
-
-        addressSheet = buildAddressSheet()
-        layout.addView(addressSheet, FrameLayout.LayoutParams(match, wrap, Gravity.BOTTOM))
+        layout.addView(scanStatus, FrameLayout.LayoutParams(wrap, wrap, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(40) })
         return layout
     }
 
-    private fun buildAddressSheet(): LinearLayout {
-        val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
-        val match = ViewGroup.LayoutParams.MATCH_PARENT
-        val sheet = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
-            background = GradientDrawable().apply {
-                setColor(SHEET_BG)
-                val r = dp(24).toFloat()
-                cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
-            }
-            isClickable = true
-            visibility = View.GONE
-        }
-        sheet.addView(TextView(this).apply {
-            text = "Enter address"
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-            typeface = Typeface.DEFAULT_BOLD
-        })
-        sheet.addView(TextView(this).apply {
-            text = "Use the address shown in the LiveWork window in Unity."
-            setTextColor(TEXT_MUTED)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            setPadding(0, dp(4), 0, dp(16))
-        })
-        addressInput = EditText(this).apply {
-            hint = "100.x.y.z:port"
-            setSingleLine()
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-            imeOptions = EditorInfo.IME_ACTION_GO
-            setTextColor(Color.WHITE)
-            setHintTextColor(TEXT_HINT)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            background = rounded(INPUT_BG, dp(14).toFloat())
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            setOnEditorActionListener { _, action, _ ->
-                if (action == EditorInfo.IME_ACTION_GO) {
-                    connect()
-                    true
-                } else false
-            }
-        }
-        sheet.addView(addressInput, LinearLayout.LayoutParams(match, wrap))
-        addressError = TextView(this).apply {
-            setTextColor(ERROR_TEXT)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(dp(4), dp(8), dp(4), 0)
-            visibility = View.GONE
-        }
-        sheet.addView(addressError)
-        sheet.addView(pillButton("Connect", filled = true) { connect() }, LinearLayout.LayoutParams(match, wrap).apply { topMargin = dp(16) })
-        sheet.addView(pillButton("Scan QR code", filled = false) { hideAddressSheet() }, LinearLayout.LayoutParams(match, wrap).apply { topMargin = dp(8) })
-        return sheet
-    }
-
-    private fun showAddressSheet() {
-        addressInput.setText(prefs.getString("url", ""))
-        addressInput.setSelection(addressInput.text.length)
-        addressError.visibility = View.GONE
-        addressSheet.visibility = View.VISIBLE
-        scanActions.visibility = View.GONE
+    private fun showScan() {
+        screen = Screen.Scan
+        homeView.visibility = View.GONE
+        scanView.visibility = View.VISIBLE
+        scanStatus.visibility = View.GONE
+        if (!hasCamera() && !cameraAsked) askCamera()
         updateScanner()
-        addressInput.requestFocus()
-        keyboard().showSoftInput(addressInput, InputMethodManager.SHOW_IMPLICIT)
-    }
-
-    private fun hideAddressSheet() {
-        keyboard().hideSoftInputFromWindow(addressInput.windowToken, 0)
-        addressSheet.visibility = View.GONE
-        scanActions.visibility = View.VISIBLE
-        updateScanner()
-    }
-
-    private fun connect() {
-        val url = normalize(addressInput.text.toString())
-        if (url == null) {
-            addressError.text = "Enter an address such as 100.101.102.103:8080"
-            addressError.visibility = View.VISIBLE
-            return
-        }
-        open(url)
     }
 
     private fun onScanned(text: String) {
         if (!scanning) return
         val url = addressFromLink(text)
         if (url == null) {
-            showStatus("This QR code is not a LiveWork address.")
+            scanStatus.text = "This QR code is not a LiveWork address."
+            scanStatus.visibility = View.VISIBLE
             return
         }
         open(url)
     }
 
-    private fun showStatus(message: String?) {
-        statusText.text = message ?: ""
-        statusText.visibility = if (message.isNullOrEmpty()) View.GONE else View.VISIBLE
+    // ---- Address dialog ----
+
+    private fun showAddressDialog() {
+        if (addressDialog?.isShowing == true) return
+        val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
+        val match = ViewGroup.LayoutParams.MATCH_PARENT
+        val dialog = Dialog(this)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(24), dp(24), dp(20))
+            background = GradientDrawable().apply {
+                setColor(SHEET_BG)
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), LINE)
+            }
+        }
+        card.addView(TextView(this).apply {
+            text = "Enter address"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        card.addView(TextView(this).apply {
+            text = "Use the address shown in the LiveWork window in Unity."
+            setTextColor(TEXT_MUTED)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setPadding(0, dp(4), 0, dp(16))
+        })
+        val error = TextView(this).apply {
+            setTextColor(ERROR_TEXT)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(dp(4), dp(8), dp(4), 0)
+            visibility = View.GONE
+        }
+        val input = EditText(this).apply {
+            hint = "100.x.y.z:port"
+            setText(prefs.getString("url", "")?.removePrefix("http://"))
+            setSelection(text.length)
+            setSingleLine()
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            imeOptions = EditorInfo.IME_ACTION_GO
+            setTextColor(Color.WHITE)
+            setHintTextColor(TEXT_HINT)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            background = rounded(INPUT_BG, dp(12).toFloat())
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        val confirm = {
+            val url = normalize(input.text.toString())
+            if (url == null) {
+                error.text = "Enter an address such as 100.101.102.103:8080"
+                error.visibility = View.VISIBLE
+            } else {
+                dialog.dismiss()
+                open(url)
+            }
+        }
+        input.setOnEditorActionListener { _, action, _ ->
+            if (action == EditorInfo.IME_ACTION_GO) {
+                confirm()
+                true
+            } else false
+        }
+        card.addView(input, LinearLayout.LayoutParams(match, wrap))
+        card.addView(error)
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            setPadding(0, dp(20), 0, 0)
+        }
+        actions.addView(pillButton("Cancel", filled = false) { dialog.dismiss() }, LinearLayout.LayoutParams(0, wrap, 1f))
+        actions.addView(pillButton("Connect", filled = true) { confirm() }, LinearLayout.LayoutParams(0, wrap, 1f).apply { marginStart = dp(12) })
+        card.addView(actions, LinearLayout.LayoutParams(match, wrap))
+
+        dialog.setContentView(card)
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setLayout(minOf(dp(400), resources.displayMetrics.widthPixels - dp(32)), wrap)
+            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
+        dialog.setOnDismissListener { addressDialog = null }
+        addressDialog = dialog
+        dialog.show()
+        input.requestFocus()
     }
 
-    private fun updateReconnect() {
-        val saved = prefs.getString("url", null)
-        reconnectButton.visibility = if (saved == null) View.GONE else View.VISIBLE
-        if (saved != null) reconnectButton.text = "Reconnect to ${Uri.parse(saved).authority ?: saved}"
+    // ---- Loading screen ----
+
+    private fun buildLoadingView(): LinearLayout {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.BLACK)
+            isClickable = true
+            visibility = View.GONE
+        }
+        layout.addView(ProgressBar(this).apply {
+            isIndeterminate = true
+            indeterminateTintList = ColorStateList.valueOf(Color.rgb(212, 212, 212))
+        }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        layout.addView(TextView(this).apply {
+            text = "Connecting…"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setPadding(0, dp(20), 0, 0)
+        })
+        loadingAddress = TextView(this).apply {
+            setTextColor(TEXT_MUTED)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(0, dp(6), 0, 0)
+        }
+        layout.addView(loadingAddress)
+        return layout
+    }
+
+    private fun setLoading(show: Boolean) {
+        handler.removeCallbacks(hideLoadingLater)
+        loadingView.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     // ---- Camera ----
@@ -301,12 +405,12 @@ class MainActivity : Activity() {
         if (requestCode == CAMERA_REQUEST) updateScanner()
     }
 
-    /** Runs the camera only while the scan screen is on top and the app is in front. */
+    /** Runs the camera only while the scan screen is shown and the app is in front. */
     private fun updateScanner() {
         val allowed = hasCamera()
-        cameraNotice.visibility = if (allowed || addressSheet.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        cameraNotice.visibility = if (allowed) View.GONE else View.VISIBLE
         scanFrame.visibility = if (allowed) View.VISIBLE else View.GONE
-        val run = allowed && resumed && connectView.visibility == View.VISIBLE && addressSheet.visibility != View.VISIBLE
+        val run = allowed && resumed && screen == Screen.Scan
         if (run == scanning) return
         scanning = run
         if (run) {
@@ -349,7 +453,15 @@ class MainActivity : Activity() {
 
     // ---- Web client ----
 
-    @SuppressLint("SetJavaScriptEnabled")
+    /** Called by the web client when it shows its main view or its pairing form. */
+    private inner class PageBridge {
+        @JavascriptInterface
+        fun screen(@Suppress("UNUSED_PARAMETER") name: String) {
+            runOnUiThread { if (screen == Screen.Web) setLoading(false) }
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
     private fun createWebView(): WebView {
         val created = WebView(this)
         created.setBackgroundColor(Color.BLACK)
@@ -358,6 +470,7 @@ class MainActivity : Activity() {
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
         }
+        created.addJavascriptInterface(PageBridge(), "LiveWorkApp")
         CookieManager.getInstance().setAcceptCookie(true)
         created.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -368,8 +481,16 @@ class MainActivity : Activity() {
                 return true
             }
 
+            override fun onPageFinished(view: WebView, url: String) {
+                // An older LiveWork server does not call the bridge; do not keep the loading screen forever.
+                if (screen == Screen.Web && url != "about:blank") {
+                    handler.removeCallbacks(hideLoadingLater)
+                    handler.postDelayed(hideLoadingLater, 10_000)
+                }
+            }
+
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) showConnect("Cannot reach LiveWork: ${error.description}. Check the server and Tailscale.")
+                if (request.isForMainFrame) showHome("Cannot reach LiveWork: ${error.description}. Check that the server is running and that Tailscale is connected.")
             }
         }
         created.webChromeClient = object : WebChromeClient() {
@@ -381,21 +502,25 @@ class MainActivity : Activity() {
                 hideCustomView()
                 customView = view
                 customViewCallback = callback
-                root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                root.addView(view, matchParent())
             }
 
             override fun onHideCustomView() = hideCustomView()
         }
-        root.addView(created, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        root.addView(created, root.indexOfChild(loadingView), matchParent())
         return created
     }
 
     private fun open(url: String) {
         prefs.edit().putString("url", url).apply()
-        keyboard().hideSoftInputFromWindow(addressInput.windowToken, 0)
-        val view = webView ?: createWebView().also { webView = it }
-        connectView.visibility = View.GONE
+        addressDialog?.dismiss()
+        screen = Screen.Web
         updateScanner()
+        homeView.visibility = View.GONE
+        scanView.visibility = View.GONE
+        loadingAddress.text = Uri.parse(url).authority ?: url
+        setLoading(true)
+        val view = webView ?: createWebView().also { webView = it }
         view.visibility = View.VISIBLE
         view.loadUrl(url)
         setFullScreen(true)
@@ -407,23 +532,6 @@ class MainActivity : Activity() {
         customView = null
         customViewCallback?.onCustomViewHidden()
         customViewCallback = null
-    }
-
-    private fun showConnect(error: String?) {
-        hideCustomView()
-        webView?.let {
-            it.stopLoading()
-            it.loadUrl("about:blank")
-            it.visibility = View.GONE
-        }
-        connectView.visibility = View.VISIBLE
-        addressSheet.visibility = View.GONE
-        scanActions.visibility = View.VISIBLE
-        showStatus(error)
-        updateReconnect()
-        setFullScreen(false)
-        if (!hasCamera() && !cameraAsked) askCamera()
-        updateScanner()
     }
 
     // ---- Window ----
@@ -480,15 +588,14 @@ class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && webView?.visibility == View.VISIBLE) setFullScreen(true)
+        if (hasFocus && screen == Screen.Web) setFullScreen(true)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode != KeyEvent.KEYCODE_BACK) return super.onKeyDown(keyCode, event)
         when {
             customView != null -> webView?.evaluateJavascript("document.exitFullscreen && document.exitFullscreen()", null)
-            webView?.visibility == View.VISIBLE -> showConnect(null)
-            addressSheet.visibility == View.VISIBLE -> hideAddressSheet()
+            screen != Screen.Home -> showHome(null)
             else -> return super.onKeyDown(keyCode, event)
         }
         return true
@@ -509,13 +616,15 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        addressDialog?.dismiss()
         webView?.destroy()
         super.onDestroy()
     }
 
     // ---- Small view helpers ----
 
-    private fun keyboard() = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    private fun matchParent() = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 
     private fun rounded(color: Int, radius: Float) = GradientDrawable().apply {
         setColor(color)
@@ -528,11 +637,11 @@ class MainActivity : Activity() {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
         typeface = Typeface.DEFAULT_BOLD
         setTextColor(if (filled) Color.BLACK else Color.WHITE)
-        minHeight = dp(48)
-        setPadding(dp(24), dp(12), dp(24), dp(12))
-        val shape = rounded(if (filled) Color.WHITE else OUTLINE_BG, dp(24).toFloat())
-        if (!filled) shape.setStroke(dp(1), OUTLINE_STROKE)
-        background = RippleDrawable(ColorStateList.valueOf(if (filled) 0x33000000 else 0x33FFFFFF), shape, null)
+        minHeight = dp(52)
+        setPadding(dp(24), dp(14), dp(24), dp(14))
+        val shape = rounded(if (filled) Color.rgb(240, 240, 240) else BUTTON_DARK, dp(26).toFloat())
+        if (!filled) shape.setStroke(dp(1), LINE)
+        background = RippleDrawable(ColorStateList.valueOf(if (filled) 0x22000000 else 0x22FFFFFF), shape, null)
         isClickable = true
         isFocusable = true
         setOnClickListener { onClick() }
@@ -554,8 +663,7 @@ class MainActivity : Activity() {
         private val box = RectF()
 
         override fun onDraw(canvas: Canvas) {
-            val size = minOf(width, height) * 0.62f
-            val side = minOf(size, 280 * density)
+            val side = minOf(minOf(width, height) * 0.62f, 280 * density)
             val left = (width - side) / 2
             val top = (height - side) / 2
             box.set(left, top, left + side, top + side)
@@ -567,12 +675,11 @@ class MainActivity : Activity() {
             canvas.drawPath(hole, dim)
 
             val arm = side * 0.16f
-            val r = radius
             fun bracket(x: Float, y: Float, dx: Float, dy: Float) {
                 val path = Path()
                 path.moveTo(x, y + dy * arm)
-                path.lineTo(x, y + dy * r)
-                path.quadTo(x, y, x + dx * r, y)
+                path.lineTo(x, y + dy * radius)
+                path.quadTo(x, y, x + dx * radius, y)
                 path.lineTo(x + dx * arm, y)
                 canvas.drawPath(path, corner)
             }
@@ -585,12 +692,12 @@ class MainActivity : Activity() {
 
     private companion object {
         const val CAMERA_REQUEST = 1
-        val TEXT_MUTED = Color.rgb(190, 190, 190)
-        val TEXT_HINT = Color.rgb(120, 120, 120)
-        val SHEET_BG = Color.rgb(22, 22, 22)
+        val TEXT_MUTED = Color.rgb(168, 168, 168)
+        val TEXT_HINT = Color.rgb(110, 110, 110)
+        val SHEET_BG = Color.rgb(23, 23, 23)
         val INPUT_BG = Color.rgb(38, 38, 38)
-        val OUTLINE_BG = 0x66000000
-        val OUTLINE_STROKE = 0x66FFFFFF
+        val BUTTON_DARK = Color.rgb(28, 28, 28)
+        val LINE = Color.rgb(54, 54, 54)
         val ERROR_BG = 0xCC5A1D1D.toInt()
         val ERROR_TEXT = Color.rgb(255, 180, 171)
     }

@@ -30,7 +30,7 @@ buttonIcon('step', 'step', 'Next frame');
 buttonIcon('mute', 'muted', 'Unmute');
 buttonIcon('fullscreen', 'fullscreen', 'Enter fullscreen');
 buttonIcon('exitFullscreen', 'exit', 'Exit fullscreen');
-buttonIcon('menu', 'menu', 'Stream settings');
+buttonIcon('menu', 'menu', 'Settings');
 buttonIcon('closeSettings', 'close', 'Close settings');
 function showMessage(text) {
   clearTimeout(messageTimer);
@@ -38,7 +38,9 @@ function showMessage(text) {
   if (text) messageTimer = setTimeout(() => { $('message').hidden = true; }, 6000);
 }
 function showWorkspace(show) {
-  $('connect').hidden = show; $('workspace').hidden = !show;
+  $('loading').hidden = true; $('connect').hidden = show; $('workspace').hidden = !show;
+  // Tells the LiveWork Android app that the page is ready, so it can hide its loading screen.
+  window.LiveWorkApp?.screen(show ? 'workspace' : 'connect');
 }
 const sendInput = data => { if (channel?.readyState === 'open' && channel.bufferedAmount < 65536) channel.send(JSON.stringify({ v: 1, revision: state.revision, ...data })); };
 const resetInput = bindInput(stage, video, sendInput, () => mediaReady && state.state === 'playing' && $('contextMenu').hidden);
@@ -72,7 +74,7 @@ async function connectControl() {
     }
   } catch {
     if (attempt !== controlGeneration) return;
-    if (!connectedOnce) $('pairError').textContent = 'Cannot reach LiveWork. Check the server and your Tailscale connection.';
+    if (!connectedOnce) { showWorkspace(false); $('pairError').textContent = 'Cannot reach LiveWork. Check the server and your Tailscale connection.'; }
     reconnectTimer = setTimeout(connectControl, 2000); return;
   }
   if (attempt !== controlGeneration || (control && control.readyState < 2)) return;
@@ -124,13 +126,13 @@ function resize(width, height) {
   else renderControls();
 }
 $('dimensions').onsubmit = e => { e.preventDefault(); resize(Number($('width').value), Number($('height').value)); };
-$('presets').onchange = e => {
-  if (e.target.name !== 'preset') return;
-  $('dimensions').hidden = e.target.value !== 'custom'; $('resolutionError').textContent = '';
-  if (e.target.value === 'custom') {
+$('preset').onchange = e => {
+  const value = e.target.value;
+  $('dimensions').hidden = value !== 'custom'; $('resolutionError').textContent = '';
+  if (value === 'custom') {
     $('width').value = state.width || 1280; $('height').value = state.height || 720; $('width').focus(); return;
   }
-  resize(...e.target.value.split('x').map(Number));
+  if (value !== 'current') resize(...value.split('x').map(Number));
 };
 $('qualities').onchange = e => {
   if (e.target.name === 'quality' && !command('SetStreamQuality', { quality: e.target.value })) renderControls();
@@ -140,7 +142,7 @@ function showSettings(show) {
   if (show === !$('settings').hidden) return;
   resetInput();
   $('settings').hidden = !show; $('menu').setAttribute('aria-expanded', String(show));
-  if (show) ($('settings').querySelector('input:checked:not(:disabled)') || $('closeSettings')).focus();
+  if (show) $('settings').querySelector('.sheet').focus();
   else { $('dimensions').hidden = true; resolutionEdited = false; renderControls(); $('menu').focus(); }
 }
 $('menu').onclick = () => showSettings(true);
@@ -188,11 +190,12 @@ function renderControls() {
   $('pause').disabled = !ready || !active; $('pause').setAttribute('aria-pressed', String(Boolean(paused)));
   $('step').disabled = !ready || !paused || !active;
   for (const input of $('settings').querySelectorAll('input[type="radio"]')) input.disabled = !ready;
-  $('resize').disabled = !ready;
+  $('preset').disabled = !ready; $('resize').disabled = !ready;
   if (state.quality) choose('quality', state.quality);
   if (state.width) {
-    $('currentSize').textContent = 'Current: ' + state.width + ' × ' + state.height;
-    if (!resolutionEdited && $('dimensions').hidden) choose('preset', state.width + 'x' + state.height);
+    const size = state.width + 'x' + state.height;
+    $('currentOption').textContent = state.width + ' × ' + state.height + ' · Custom';
+    if (!resolutionEdited && $('dimensions').hidden) $('preset').value = [...$('preset').options].some(o => o.value === size) ? size : 'current';
   }
 }
 function updateState(next) {
@@ -201,10 +204,12 @@ function updateState(next) {
   state = next;
   $('status').textContent = state.state || 'connecting'; $('status').dataset.state = state.state;
   renderControls();
-  if (state.message && state.message !== previousMessage) showMessage(state.message);
-  else if (!state.message && previousMessage) showMessage('');
+  // The overlay already shows the message of these states; a toast would repeat it.
+  const overlayMessage = ['offline', 'reloading', 'error'].includes(state.state);
+  if (state.message !== previousMessage) showMessage(overlayMessage ? '' : state.message || '');
   $('overlay').hidden = mediaReady && ['playing', 'paused'].includes(state.state);
-  $('overlay').textContent = state.state === 'playing' || state.state === 'paused' ? 'Connecting video…' : state.state === 'stopped' ? 'Press Play to start' : state.state === 'reloading' ? 'Unity is reloading…' : state.state === 'error' ? (state.message || 'Check the Unity Console') : 'Waiting for Unity…';
+  $('overlay').dataset.busy = String(state.state !== 'stopped' && state.state !== 'error');
+  $('overlayText').textContent = state.state === 'playing' || state.state === 'paused' ? 'Starting video…' : state.state === 'stopped' ? 'Press Play to start' : state.state === 'reloading' ? (state.message || 'Unity is reloading scripts…') : state.state === 'error' ? (state.message || 'Check the Unity Console') : (state.message || 'Waiting for Unity…');
   if (!running() || !state.streaming) { stopMedia(); return; }
   if (stream && streamRevision !== state.revision) stopMedia();
   if (!stream && !mediaStarting && !mediaTimer) startMedia();
@@ -227,7 +232,7 @@ async function startMedia() {
     // Play frames as soon as they arrive instead of buffering for smoothness.
     if ('jitterBufferTarget' in e.receiver) e.receiver.jitterBufferTarget = 0;
     else if ('playoutDelayHint' in e.receiver) e.receiver.playoutDelayHint = 0;
-    video.play().catch(() => showMessage('Tap Sound or Play to allow video playback.'));
+    video.play().catch(() => showMessage('Video playback was blocked. Tap Unmute to start it.'));
   };
   rs.onDisconnect = () => { if (ticket === generation) retryMedia(); };
   try {

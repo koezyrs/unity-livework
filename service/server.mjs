@@ -27,8 +27,9 @@ const send = (ws, msg) => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.
 const cookie = req => /(?:^|;\s*)livework=([^;]+)/.exec(req.headers.cookie || '')?.[1];
 
 export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = String(randomInt(100000, 1000000)), hostToken = randomBytes(32).toString('hex'), persist = false, stateDirectory = path.join(root, '.local') } = {}) {
-  let editor, controller, signalEditor, signalBrowser, session, sessionExpires = 0;
-  let state = { v: 1, type: 'state', state: 'offline', message: 'Waiting for Unity Editor', width: 0, height: 0 };
+  let editor, controller, signalEditor, signalBrowser, session, sessionExpires = 0, editorLostTimer;
+  const editorOffline = 'Unity Editor is not connected. Open Window > LiveWork in Unity and start the server.';
+  let state = { v: 1, type: 'state', state: 'offline', message: 'Waiting for Unity Editor…', width: 0, height: 0 };
   const pending = new Map(), attempts = new Map();
   let closing;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
@@ -40,7 +41,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const json = (status, data, headers = {}) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers }); res.end(JSON.stringify(data)); };
-    if (!trustedNetwork(req.socket.remoteAddress)) return json(403, { error: 'Connect through Tailscale or localhost' });
+    if (!trustedNetwork(req.socket.remoteAddress)) return json(403, { error: 'This address is not allowed. Connect through Tailscale.' });
     if (!sameOrigin(req)) return json(403, { error: 'Origin rejected' });
     if (url.pathname === '/api/shutdown') {
       if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
@@ -108,7 +109,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         ws.on('close', () => { signaling.remove(ws); if (local) signalEditor = undefined; else { signalBrowser = undefined; send(editor, { v: 1, type: 'resetInput' }); } });
         return;
       }
-      if (local) { editor = ws; send(ws, { v: 1, type: 'hello' }); }
+      if (local) { editor = ws; clearTimeout(editorLostTimer); send(ws, { v: 1, type: 'hello' }); }
       else { controller = ws; send(ws, state); }
       ws.on('message', bytes => {
         let msg; try { msg = JSON.parse(bytes.toString()); } catch { return ws.close(1008, 'Invalid JSON'); }
@@ -120,15 +121,23 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         }
         if (msg.type === 'resetInput') { send(editor, msg); return; }
         if (msg.type !== 'command' || typeof msg.id !== 'string' || msg.id.length > 128 || !commands.has(msg.command)) return result(ws, msg.id, false, 'Invalid command');
-        if (pending.has(msg.id) || pending.size >= 16) return result(ws, msg.id, false, 'Command already pending or queue full');
+        if (pending.has(msg.id)) return result(ws, msg.id, false, 'This command is already running.');
+        if (pending.size >= 16) return result(ws, msg.id, false, 'Too many commands are waiting. Try again in a moment.');
         if (msg.command === 'SetResolution' && (!Number.isInteger(msg.width) || !Number.isInteger(msg.height) || msg.width < 240 || msg.height < 240 || msg.width > 1920 || msg.height > 1920 || msg.width % 2 || msg.height % 2 || msg.width * msg.height > 2073600)) return result(ws, msg.id, false, 'Use even dimensions 240–1920, up to 2,073,600 pixels');
         if (msg.command === 'SetStreamQuality' && !qualities.has(msg.quality)) return result(ws, msg.id, false, 'Unknown stream quality');
-        if (!editor || editor.readyState !== WebSocket.OPEN) return result(ws, msg.id, false, 'Editor is disconnected; command was not queued');
-        pending.set(msg.id, { ws, timer: setTimeout(() => { pending.delete(msg.id); result(ws, msg.id, false, 'Editor did not confirm completion; check its current state'); }, 20000) });
+        if (!editor || editor.readyState !== WebSocket.OPEN) return result(ws, msg.id, false, 'Unity Editor is not connected. The command was not sent.');
+        pending.set(msg.id, { ws, timer: setTimeout(() => { pending.delete(msg.id); result(ws, msg.id, false, 'Unity did not confirm the command. Check the Editor before you try again.'); }, 20000) });
         send(editor, msg);
       });
       ws.on('close', () => {
-        if (local) { editor = undefined; state = { ...state, state: 'offline', message: 'Editor disconnected or reloading' }; send(controller, state); signalEditor?.close(); }
+        if (local) {
+          editor = undefined; signalEditor?.close();
+          // Unity closes this socket on every script reload (entering Play Mode too); keep its reload message.
+          // If Unity does not come back, report it as disconnected.
+          const setOffline = () => { state = { ...state, state: 'offline', message: editorOffline }; send(controller, state); };
+          if (state.state === 'reloading') { clearTimeout(editorLostTimer); editorLostTimer = setTimeout(() => { if (!editor) setOffline(); }, 60000); }
+          else setOffline();
+        }
         else { clearPending('Controller disconnected; command was not replayed'); controller = undefined; signalBrowser?.close(); send(editor, { v: 1, type: 'resetInput' }); }
       });
     });
@@ -146,7 +155,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
   function close() {
     if (closing) return closing;
     closing = (async () => {
-    clearInterval(heartbeat); clearPending('Service stopped');
+    clearInterval(heartbeat); clearTimeout(editorLostTimer); clearPending('Service stopped');
     for (const ws of wss.clients) ws.terminate();
     await new Promise(resolve => server.close(resolve));
     wss.close();

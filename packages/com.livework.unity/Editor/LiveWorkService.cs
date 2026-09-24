@@ -48,7 +48,7 @@ namespace LiveWork.Editor
                 await Run("node", "--version", directory, true);
                 if (!File.Exists(Path.Combine(directory, "node_modules/ws/package.json")))
                     await Run("cmd.exe", "/d /s /c \"npm.cmd ci --omit=dev --ignore-scripts --no-audit --no-fund\"", directory);
-                if (!File.Exists(Path.Combine(directory, "generated/signaling.cjs"))) throw new FileNotFoundException("Run scripts/setup.ps1 in the repository, or reinstall the Git package to restore its bundled service.");
+                if (!File.Exists(Path.Combine(directory, "generated/signaling.cjs"))) throw new FileNotFoundException("The bundled LiveWork service is missing. Reinstall the LiveWork package. In a repository clone, run scripts/setup.ps1.");
             } finally { EditorApplication.UnlockReloadAssemblies(); IsPreparing = false; }
         }
 
@@ -57,7 +57,7 @@ namespace LiveWork.Editor
             using (var process = new Process()) {
                 process.StartInfo = new ProcessStartInfo(executable, arguments) { WorkingDirectory = directory, UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, RedirectStandardOutput = true, RedirectStandardError = true };
                 try { process.Start(); }
-                catch (Exception ex) { throw new InvalidOperationException("Install Node.js 22 or newer (including npm), then restart Unity. " + ex.Message); }
+                catch (Exception ex) { throw new InvalidOperationException("Node.js was not found. Install Node.js 22+ with npm, then restart Unity. " + ex.Message); }
                 var output = process.StandardOutput.ReadToEndAsync();
                 var errors = process.StandardError.ReadToEndAsync();
                 var deadline = DateTime.UtcNow.AddMinutes(3);
@@ -74,7 +74,7 @@ namespace LiveWork.Editor
                 var text = await output;
                 var errorText = await errors;
                 if (process.ExitCode != 0) throw new InvalidOperationException("Service preparation failed. Check Node.js/npm and your network connection. " + errorText);
-                if (checkNode && (!int.TryParse(text.Trim().TrimStart('v').Split('.')[0], out int major) || major < 22)) throw new InvalidOperationException("LiveWork requires Node.js 22 or newer. Install it and restart Unity.");
+                if (checkNode && (!int.TryParse(text.Trim().TrimStart('v').Split('.')[0], out int major) || major < 22)) throw new InvalidOperationException("LiveWork requires Node.js 22+. Install it, then restart Unity.");
             }
         }
     }

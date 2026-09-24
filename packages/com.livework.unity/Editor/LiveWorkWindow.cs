@@ -8,7 +8,8 @@ namespace LiveWork.Editor
 {
     public sealed class LiveWorkWindow : EditorWindow
     {
-        Texture2D qr;
+        const float QrEdge = 168;
+        Texture2D qr, dot;
         string qrPayload, localError;
         double copiedUntil;
         Vector2 scroll;
@@ -18,7 +19,7 @@ namespace LiveWork.Editor
         [MenuItem("Window/LiveWork")]
         public static void Open() => GetWindow<LiveWorkWindow>("LiveWork");
         void OnEnable() { minSize = new Vector2(300, 420); }
-        void OnDisable() { ClearQr(); }
+        void OnDisable() { ClearQr(); if (dot != null) DestroyImmediate(dot); dot = null; }
         void OnInspectorUpdate() => Repaint();
         void ClearQr() { if (qr != null) DestroyImmediate(qr); qr = null; qrPayload = null; }
 
@@ -42,7 +43,7 @@ namespace LiveWork.Editor
             using (new EditorGUILayout.VerticalScope(EditorStyles.inspectorDefaultMargins)) {
                 GUILayout.Space(8);
                 GUILayout.Label("LiveWork", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("Status", LiveWorkHost.ServerStatus);
+                StatusRow();
                 GUILayout.Space(8);
                 bool ready = LiveWorkHost.ServerReady;
                 string url = ready ? LiveWorkHost.BrowserUrl : null;
@@ -52,7 +53,7 @@ namespace LiveWork.Editor
                 var codeStyle = new GUIStyle(EditorStyles.textField) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
                 EditorGUILayout.SelectableLabel(ready ? LiveWorkHost.Config.code : "— — — — — —", codeStyle, GUILayout.Height(36));
                 GUILayout.Space(12);
-                QrForApp = GUILayout.Toolbar(QrForApp ? 1 : 0, QrTargets) == 1;
+                QrForApp = EditorGUILayout.Popup("QR code opens", QrForApp ? 1 : 0, QrTargets) == 1;
                 GUILayout.Space(6);
                 if (ready) {
                     var pairUrl = url + "/#pair=" + Uri.EscapeDataString(LiveWorkHost.Config.code);
@@ -60,11 +61,7 @@ namespace LiveWork.Editor
                     try { UpdateQr(QrForApp ? "livework://open?url=" + Uri.EscapeDataString(pairUrl) : pairUrl); }
                     catch (Exception ex) { localError = "QR code could not be created: " + ex.Message; }
                 } else if (qr != null) ClearQr();
-                var area = GUILayoutUtility.GetRect(0, 156, GUILayout.ExpandWidth(true));
-                float edge = qr != null ? Mathf.Floor(156 * EditorGUIUtility.pixelsPerPoint / qr.width) * qr.width / EditorGUIUtility.pixelsPerPoint : 156;
-                var rect = new Rect(Mathf.Round((area.center.x - edge / 2) * EditorGUIUtility.pixelsPerPoint) / EditorGUIUtility.pixelsPerPoint, area.y, edge, edge);
-                if (ready && qr != null) GUI.DrawTexture(rect, qr, ScaleMode.StretchToFill);
-                else GUI.Box(rect, "Start server to connect");
+                DrawQr(ready);
                 GUILayout.Space(6);
                 if (ready) EditorGUILayout.HelpBox(url.Contains("127.0.0.1") ? "Localhost: this address works on this computer only." : QrForApp ? "Scan with your phone’s camera to open the LiveWork app." : "Scan with your phone’s camera to connect.", MessageType.None);
                 GUILayout.Space(8);
@@ -88,6 +85,54 @@ namespace LiveWork.Editor
                 GUILayout.Space(8);
             }
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>Draws the QR code in a white square that keeps the same size for every payload.</summary>
+        void DrawQr(bool ready)
+        {
+            float ppp = EditorGUIUtility.pixelsPerPoint;
+            var area = GUILayoutUtility.GetRect(0, QrEdge, GUILayout.ExpandWidth(true));
+            var box = new Rect(Mathf.Round((area.center.x - QrEdge / 2) * ppp) / ppp, Mathf.Round(area.y * ppp) / ppp, QrEdge, QrEdge);
+            if (!ready || qr == null) { GUI.Box(box, "Start server to connect"); return; }
+            EditorGUI.DrawRect(box, Color.white);
+            // Whole pixels per module keep the code sharp; the white square absorbs the rest.
+            float edge = Mathf.Floor(QrEdge * ppp / qr.width) * qr.width / ppp;
+            var rect = new Rect(Mathf.Round((box.center.x - edge / 2) * ppp) / ppp, Mathf.Round((box.center.y - edge / 2) * ppp) / ppp, edge, edge);
+            GUI.DrawTexture(rect, qr, ScaleMode.StretchToFill);
+        }
+
+        void StatusRow()
+        {
+            var color = LiveWorkService.IsPreparing || LiveWorkHost.IsStopping ? new Color(0.95f, 0.7f, 0.2f)
+                : LiveWorkHost.ServerError != null ? new Color(0.93f, 0.33f, 0.3f)
+                : LiveWorkHost.ServerReady ? new Color(0.3f, 0.8f, 0.4f)
+                : LiveWorkHost.Enabled ? new Color(0.95f, 0.7f, 0.2f)
+                : new Color(0.55f, 0.55f, 0.55f);
+            using (new EditorGUILayout.HorizontalScope()) {
+                var icon = GUILayoutUtility.GetRect(10, 18, GUILayout.Width(10));
+                var previous = GUI.color; GUI.color = color;
+                GUI.DrawTexture(new Rect(icon.x, icon.center.y - 5, 10, 10), Dot());
+                GUI.color = previous;
+                GUILayout.Space(4);
+                GUILayout.Label(LiveWorkHost.ServerStatus, EditorStyles.label);
+                GUILayout.FlexibleSpace();
+            }
+        }
+
+        /// <summary>A small white circle, tinted per status.</summary>
+        Texture2D Dot()
+        {
+            if (dot != null) return dot;
+            const int size = 32;
+            dot = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "LiveWork status dot", hideFlags = HideFlags.HideAndDontSave };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++) {
+                    float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(size / 2f, size / 2f));
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(size / 2f - distance) * 255));
+                }
+            dot.SetPixels32(pixels); dot.Apply(false, true);
+            return dot;
         }
 
         async void StartServer()

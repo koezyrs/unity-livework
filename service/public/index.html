@@ -10,7 +10,11 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <section id="connect" aria-label="Connect to Unity">
+  <section id="loading" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Connecting to Unity…</p>
+  </section>
+  <section id="connect" aria-label="Connect to Unity" hidden>
     <form id="pairing">
       <div class="pair-brand"><span class="brand-mark" aria-hidden="true">L<span>W</span></span>LiveWork</div>
       <h1>Connect to your editor</h1>
@@ -33,32 +37,32 @@
       <div class="view-actions">
         <button id="mute" class="icon-button" aria-pressed="true" aria-label="Unmute" title="Unmute"></button>
         <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Enter fullscreen"></button>
-        <button id="menu" class="icon-button" aria-label="Stream settings" title="Stream settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings"></button>
+        <button id="menu" class="icon-button" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings"></button>
       </div>
     </header>
     <main id="stage" tabindex="0" aria-label="Interactive Unity Game View">
       <video id="video" autoplay playsinline muted disablepictureinpicture poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video><canvas id="lastFrame" hidden></canvas>
-      <div id="overlay" role="status">Waiting for Unity…</div>
+      <div id="overlay" role="status"><span class="spinner" aria-hidden="true"></span><span id="overlayText">Waiting for Unity…</span></div>
       <div id="message" role="status" hidden></div>
       <button id="exitFullscreen" class="icon-button" aria-label="Exit fullscreen" title="Exit fullscreen" hidden></button>
       <div id="contextMenu" hidden><button id="lock">Lock pointer</button></div>
     </main>
     <div id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
-      <div class="sheet">
+      <div class="sheet" tabindex="-1">
         <div class="sheet-head">
-          <h2 id="settingsTitle">Stream settings</h2>
+          <h2 id="settingsTitle">Settings</h2>
           <button id="closeSettings" class="icon-button" aria-label="Close settings" title="Close settings"></button>
         </div>
         <fieldset id="presets">
           <legend>Game resolution</legend>
-          <p id="currentSize" class="hint">Current: 1280 × 720</p>
-          <div class="choices">
-            <label class="choice"><input type="radio" name="preset" value="720x1280"><span>720 × 1280<small>Portrait HD</small></span></label>
-            <label class="choice"><input type="radio" name="preset" value="1280x720"><span>1280 × 720<small>Landscape HD</small></span></label>
-            <label class="choice"><input type="radio" name="preset" value="1080x1920"><span>1080 × 1920<small>Portrait Full HD</small></span></label>
-            <label class="choice"><input type="radio" name="preset" value="1920x1080"><span>1920 × 1080<small>Landscape Full HD</small></span></label>
-            <label class="choice wide"><input type="radio" name="preset" value="custom"><span>Custom size<small>Set width and height</small></span></label>
-          </div>
+          <select id="preset" aria-label="Game resolution">
+            <option value="720x1280">720 × 1280 · Portrait HD</option>
+            <option value="1280x720">1280 × 720 · Landscape HD</option>
+            <option value="1080x1920">1080 × 1920 · Portrait Full HD</option>
+            <option value="1920x1080">1920 × 1080 · Landscape Full HD</option>
+            <option id="currentOption" value="current" hidden></option>
+            <option value="custom">Custom size…</option>
+          </select>
           <form id="dimensions" hidden>
             <label>Width<input id="width" type="number" min="240" max="1920" step="2" value="1280" required></label>
             <span>×</span><label>Height<input id="height" type="number" min="240" max="1920" step="2" value="720" required></label>

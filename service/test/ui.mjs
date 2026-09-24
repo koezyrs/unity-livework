@@ -49,8 +49,14 @@ try {
   await expect(page.locator('#pairError')).toContainText('invalid');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url); await screenshot('pairing-mobile');
+  await page.addInitScript(() => {
+    // Records whether the pairing form ever appears while a QR link connects.
+    const watch = () => { if (document.getElementById('connect')?.hidden === false) window.connectShown = true; requestAnimationFrame(watch); };
+    requestAnimationFrame(watch);
+  });
   await page.goto(url + '/#pair=123456');
   await expect(page.locator('#workspace')).toBeVisible();
+  assert.equal(await page.evaluate(() => window.connectShown ?? false), false, 'QR pairing must not flash the pairing form');
   assert.equal(new URL(page.url()).hash, '');
   await expect(page.locator('.transport button')).toHaveCount(3);
   await expect(page.locator('#step')).toBeDisabled();
@@ -66,23 +72,26 @@ try {
   await expect.poll(() => state.frame).toBe(1);
   await page.locator('#pause').click();
   await expect(page.locator('#settings')).toBeHidden();
-  await page.getByRole('button', { name: 'Stream settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.locator('#settingsTitle')).toHaveText('Settings');
   await expect(page.locator('#settings')).toBeVisible();
   await expect(page.locator('#menu')).toHaveAttribute('aria-expanded', 'true');
   await settled(); await screenshot('settings-mobile');
-  await page.locator('.choice', { hasText: '720 × 1280' }).click();
+  await expect(page.locator('#preset')).toHaveValue('1280x720');
+  await page.locator('#preset').selectOption('720x1280');
   await expect.poll(() => state.width).toBe(720);
-  await expect(page.getByLabel('720 × 1280')).toBeChecked();
-  await expect(page.locator('#currentSize')).toHaveText('Current: 720 × 1280');
+  await expect(page.locator('#preset')).toHaveValue('720x1280');
   await expect(page.locator('#dimensions')).toBeHidden();
-  await page.locator('.choice', { hasText: 'Custom size' }).click();
+  await page.locator('#preset').selectOption('custom');
+  await expect(page.locator('#dimensions')).toBeVisible();
   await page.locator('#width').fill('1920'); await page.locator('#height').fill('1920');
   await page.locator('#resize').click();
   await expect(page.locator('#resolutionError')).toContainText('2,073,600');
   await page.locator('#width').fill('800'); await page.locator('#height').fill('600'); await page.locator('#resize').click();
   await expect.poll(() => state.width).toBe(800);
   await expect(page.locator('#dimensions')).toBeHidden();
-  await expect(page.locator('input[name="preset"]:checked')).toHaveCount(0);
+  await expect(page.locator('#preset')).toHaveValue('current');
+  await expect(page.locator('#currentOption')).toHaveText('800 × 600 · Custom');
   await expect(page.getByLabel('Balanced')).toBeChecked();
   await page.locator('.choice', { hasText: 'Smooth' }).click();
   await expect.poll(() => state.quality).toBe('smooth');

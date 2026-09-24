@@ -1,7 +1,25 @@
+import groovy.json.JsonSlurper
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// The app shares its version with the Unity package.
+@Suppress("UNCHECKED_CAST")
+val packageJson = JsonSlurper().parse(file("../../packages/com.livework.unity/package.json")) as Map<String, Any>
+val appVersion = packageJson["version"] as String
+val appVersionCode = appVersion.substringBefore('-').split('.').map { it.toInt() }
+    .let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+
+// Release signing comes from environment variables (CI) or keystore.properties (local).
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun signingValue(env: String, key: String): String? = System.getenv(env) ?: keystoreProperties.getProperty(key)
+val releaseStoreFile = signingValue("LIVEWORK_KEYSTORE_FILE", "storeFile")
 
 android {
     namespace = "com.livework.client"
@@ -11,13 +29,27 @@ android {
         applicationId = "com.livework.client"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.0"
+        versionCode = appVersionCode
+        versionName = appVersion
+    }
+
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = signingValue("LIVEWORK_KEYSTORE_PASSWORD", "storePassword")
+                keyAlias = signingValue("LIVEWORK_KEY_ALIAS", "keyAlias")
+                keyPassword = signingValue("LIVEWORK_KEY_PASSWORD", "keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -25,6 +57,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+base {
+    archivesName.set("LiveWork-$appVersion")
 }
 
 kotlin {

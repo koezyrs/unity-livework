@@ -124,10 +124,13 @@ previous Game View selection and run-in-background setting.
 | Play / Stop | Enter or exit Unity Play Mode |
 | Pause / Resume | Pause gameplay or continue running |
 | Step | Advance one Editor frame while paused |
-| Resolution | Apply a preset immediately; choose **Custom…** for width, height, and Apply |
-| Quality | Stream quality: **Smooth** for mobile data, **Balanced**, or **Sharp** for fast Wi-Fi |
 | Sound | Toggle audio; playback starts muted |
 | Fullscreen | Show only the game and a small exit button |
+| Menu (☰) | Open **Stream settings**: game resolution and stream quality |
+
+In **Stream settings**, a resolution preset applies immediately; choose **Custom size**
+for width, height, and Apply. Stream quality is **Smooth** for mobile data,
+**Balanced**, or **Sharp** for fast Wi-Fi. Press Escape or × to close it.
 | Right-click the game | Open **Lock pointer** on supported desktop browsers |
 
 All controls share one row. On narrow screens, secondary branding and status text
@@ -215,7 +218,7 @@ QR option to **Android app** so the phone's camera opens the app directly.
 ## Limitations
 
 - Supported Editor versions are deliberately pinned in this preview.
-- Streaming targets **30 FPS**. The **Quality** control sets the stream cap:
+- Streaming targets **30 FPS**. The **Stream quality** setting sets the stream cap:
   Smooth (960 pixels on the longest edge, 2.5 Mbps), Balanced (1280 pixels,
   4 Mbps, default) or Sharp (1280 pixels, 8 Mbps). A higher Game View resolution
   does not remove that cap.

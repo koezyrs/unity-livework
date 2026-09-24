@@ -30,27 +30,11 @@
         <button id="pause" class="icon-button" disabled aria-label="Pause" title="Pause" aria-pressed="false"></button>
         <button id="step" class="icon-button" disabled aria-label="Next frame" title="Next frame"></button>
       </div>
-    <section id="settings" aria-label="Game view settings">
-      <label class="resolution-label" for="preset">Resolution</label>
-      <select id="preset" disabled aria-label="Game resolution">
-        <option value="">Current</option><option value="720x1280">720 × 1280</option>
-        <option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option>
-        <option value="1920x1080">1920 × 1080</option><option value="custom">Custom…</option>
-      </select>
-      <select id="quality" disabled aria-label="Stream quality" title="Stream quality">
-        <option value="smooth">Smooth</option><option value="balanced">Balanced</option><option value="sharp">Sharp</option>
-      </select>
       <div class="view-actions">
         <button id="mute" class="icon-button" aria-pressed="true" aria-label="Unmute" title="Unmute"></button>
         <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Enter fullscreen"></button>
+        <button id="menu" class="icon-button" aria-label="Stream settings" title="Stream settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings"></button>
       </div>
-      <form id="dimensions" hidden>
-        <label>Width<input id="width" type="number" min="240" max="1920" step="2" value="1280" required></label>
-        <span>×</span><label>Height<input id="height" type="number" min="240" max="1920" step="2" value="720" required></label>
-        <button id="resize" type="submit">Apply</button>
-        <p id="resolutionError" class="error" role="alert"></p>
-      </form>
-    </section>
     </header>
     <main id="stage" tabindex="0" aria-label="Interactive Unity Game View">
       <video id="video" autoplay playsinline muted disablepictureinpicture></video><canvas id="lastFrame" hidden></canvas>
@@ -59,6 +43,39 @@
       <button id="exitFullscreen" class="icon-button" aria-label="Exit fullscreen" title="Exit fullscreen" hidden></button>
       <div id="contextMenu" hidden><button id="lock">Lock pointer</button></div>
     </main>
+    <div id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+      <div class="sheet">
+        <div class="sheet-head">
+          <h2 id="settingsTitle">Stream settings</h2>
+          <button id="closeSettings" class="icon-button" aria-label="Close settings" title="Close settings"></button>
+        </div>
+        <fieldset id="presets">
+          <legend>Game resolution</legend>
+          <p id="currentSize" class="hint">Current: 1280 × 720</p>
+          <div class="choices">
+            <label class="choice"><input type="radio" name="preset" value="720x1280"><span>720 × 1280<small>Portrait HD</small></span></label>
+            <label class="choice"><input type="radio" name="preset" value="1280x720"><span>1280 × 720<small>Landscape HD</small></span></label>
+            <label class="choice"><input type="radio" name="preset" value="1080x1920"><span>1080 × 1920<small>Portrait Full HD</small></span></label>
+            <label class="choice"><input type="radio" name="preset" value="1920x1080"><span>1920 × 1080<small>Landscape Full HD</small></span></label>
+            <label class="choice wide"><input type="radio" name="preset" value="custom"><span>Custom size<small>Set width and height</small></span></label>
+          </div>
+          <form id="dimensions" hidden>
+            <label>Width<input id="width" type="number" min="240" max="1920" step="2" value="1280" required></label>
+            <span>×</span><label>Height<input id="height" type="number" min="240" max="1920" step="2" value="720" required></label>
+            <button id="resize" type="submit">Apply</button>
+            <p id="resolutionError" class="error" role="alert"></p>
+          </form>
+        </fieldset>
+        <fieldset id="qualities">
+          <legend>Stream quality</legend>
+          <div class="choices">
+            <label class="choice wide"><input type="radio" name="quality" value="smooth"><span>Smooth<small>Up to 960 px, 2.5 Mbps. Best on mobile data.</small></span></label>
+            <label class="choice wide"><input type="radio" name="quality" value="balanced"><span>Balanced<small>Up to 1280 px, 4 Mbps. Good for most networks.</small></span></label>
+            <label class="choice wide"><input type="radio" name="quality" value="sharp"><span>Sharp<small>Up to 1280 px, 8 Mbps. Best on fast Wi-Fi.</small></span></label>
+          </div>
+        </fieldset>
+      </div>
+    </div>
   </div>
 </body>
 </html>

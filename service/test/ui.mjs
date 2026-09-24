@@ -31,6 +31,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));
 async function screenshot(name) { await page.screenshot({ path: '../.artifacts/ui-' + name + '.png' }); }
+async function settled() { await page.locator('.sheet').evaluate(el => Promise.all(el.getAnimations().map(a => a.finished))); }
 async function fit() {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   for (const button of await page.locator('#workspace button:visible').all()) {
@@ -64,20 +65,34 @@ try {
   await page.locator('#step').click();
   await expect.poll(() => state.frame).toBe(1);
   await page.locator('#pause').click();
-  await page.locator('#preset').selectOption('720x1280');
+  await expect(page.locator('#settings')).toBeHidden();
+  await page.getByRole('button', { name: 'Stream settings' }).click();
+  await expect(page.locator('#settings')).toBeVisible();
+  await expect(page.locator('#menu')).toHaveAttribute('aria-expanded', 'true');
+  await settled(); await screenshot('settings-mobile');
+  await page.locator('.choice', { hasText: '720 × 1280' }).click();
   await expect.poll(() => state.width).toBe(720);
+  await expect(page.getByLabel('720 × 1280')).toBeChecked();
+  await expect(page.locator('#currentSize')).toHaveText('Current: 720 × 1280');
   await expect(page.locator('#dimensions')).toBeHidden();
-  await page.locator('#preset').selectOption('custom');
+  await page.locator('.choice', { hasText: 'Custom size' }).click();
   await page.locator('#width').fill('1920'); await page.locator('#height').fill('1920');
   await page.locator('#resize').click();
   await expect(page.locator('#resolutionError')).toContainText('2,073,600');
   await page.locator('#width').fill('800'); await page.locator('#height').fill('600'); await page.locator('#resize').click();
   await expect.poll(() => state.width).toBe(800);
   await expect(page.locator('#dimensions')).toBeHidden();
-  await expect(page.locator('#quality')).toHaveValue('balanced');
-  await page.locator('#quality').selectOption('smooth');
+  await expect(page.locator('input[name="preset"]:checked')).toHaveCount(0);
+  await expect(page.getByLabel('Balanced')).toBeChecked();
+  await page.locator('.choice', { hasText: 'Smooth' }).click();
   await expect.poll(() => state.quality).toBe('smooth');
-  await expect(page.locator('#quality')).toBeEnabled();
+  await expect(page.getByLabel('Smooth')).toBeEnabled();
+  await expect(page.getByLabel('Smooth')).toBeChecked();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#settings')).toBeHidden();
+  await expect(page.locator('#menu')).toBeFocused();
+  await page.locator('#menu').click(); await expect(page.locator('#settings')).toBeVisible();
+  await page.locator('#closeSettings').click(); await expect(page.locator('#settings')).toBeHidden();
   await page.locator('#mute').click(); await expect(page.locator('#mute')).toHaveAttribute('aria-label', 'Mute');
   assert.equal(await page.locator('#video').evaluate(v => v.muted), false);
   await page.locator('#mute').click();
@@ -90,10 +105,17 @@ try {
   for (const [name, size] of [['desktop', [1440, 1000]], ['landscape', [844, 390]], ['narrow', [320, 568]]]) {
     await page.setViewportSize({ width: size[0], height: size[1] }); await fit(); await screenshot('workspace-' + name);
     const geometry = await page.locator('.transport').boundingBox();
-    const settings = await page.locator('#settings').boundingBox();
-    assert.ok(Math.abs(geometry.y - settings.y) < 1, 'Controls must remain on one row');
+    const actions = await page.locator('.view-actions').boundingBox();
+    assert.ok(Math.abs(geometry.y - actions.y) < 1, 'Controls must remain on one row');
     if (size[0] > 700) assert.ok(Math.abs(geometry.x + geometry.width / 2 - size[0] / 2) < 1, 'Transport must be centered');
-    assert.ok(settings.x >= geometry.x + geometry.width, 'Settings must not overlap transport');
+    assert.ok(actions.x >= geometry.x + geometry.width, 'View actions must not overlap transport');
+    const menu = await page.locator('#menu').boundingBox();
+    assert.ok(size[0] - (menu.x + menu.width) <= 20, 'Menu must sit at the right edge');
+    await page.locator('#menu').click(); await expect(page.locator('#settings')).toBeVisible();
+    await settled(); await fit(); await screenshot('settings-' + name);
+    const sheet = await page.locator('.sheet').boundingBox();
+    assert.ok(sheet.x + sheet.width <= size[0] + 1, 'Settings must fit on screen');
+    await page.locator('#closeSettings').click();
   }
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
   await expect(page.locator('#status')).toHaveText('stopped');

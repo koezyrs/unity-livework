@@ -15,7 +15,9 @@ const icons = {
   sound: '<path d="M11 5L6 9H3v6l5 4zM15 8a6 6 0 010 8M18 5a10 10 0 010 14"/>',
   muted: '<path d="M11 5L6 9H3v6h3l5 4zM16 9l5 6M21 9l-5 6"/>',
   fullscreen: '<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>',
-  exit: '<path d="M3 8h5V3M16 3v5h5M21 16h-5v5M8 21v-5H3"/>'
+  exit: '<path d="M3 8h5V3M16 3v5h5M21 16h-5v5M8 21v-5H3"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>'
 };
 function buttonIcon(id, icon, label) {
   const el = $(id);
@@ -28,6 +30,8 @@ buttonIcon('step', 'step', 'Next frame');
 buttonIcon('mute', 'muted', 'Unmute');
 buttonIcon('fullscreen', 'fullscreen', 'Enter fullscreen');
 buttonIcon('exitFullscreen', 'exit', 'Exit fullscreen');
+buttonIcon('menu', 'menu', 'Stream settings');
+buttonIcon('closeSettings', 'close', 'Close settings');
 function showMessage(text) {
   clearTimeout(messageTimer);
   $('message').textContent = text; $('message').hidden = !text;
@@ -117,16 +121,31 @@ function resize(width, height) {
     $('resolutionError').textContent = 'Use even sizes from 240 to 1920, up to 2,073,600 pixels.'; return;
   }
   if (command('SetResolution', { width, height })) resolutionEdited = true;
+  else renderControls();
 }
 $('dimensions').onsubmit = e => { e.preventDefault(); resize(Number($('width').value), Number($('height').value)); };
-$('preset').onchange = e => {
+$('presets').onchange = e => {
+  if (e.target.name !== 'preset') return;
   $('dimensions').hidden = e.target.value !== 'custom'; $('resolutionError').textContent = '';
   if (e.target.value === 'custom') {
     $('width').value = state.width || 1280; $('height').value = state.height || 720; $('width').focus(); return;
   }
-  if (e.target.value) resize(...e.target.value.split('x').map(Number));
+  resize(...e.target.value.split('x').map(Number));
 };
-$('quality').onchange = e => { command('SetStreamQuality', { quality: e.target.value }); };
+$('qualities').onchange = e => {
+  if (e.target.name === 'quality' && !command('SetStreamQuality', { quality: e.target.value })) renderControls();
+};
+function choose(name, value) { for (const input of document.getElementsByName(name)) input.checked = input.value === value; }
+function showSettings(show) {
+  if (show === !$('settings').hidden) return;
+  resetInput();
+  $('settings').hidden = !show; $('menu').setAttribute('aria-expanded', String(show));
+  if (show) ($('settings').querySelector('input:checked:not(:disabled)') || $('closeSettings')).focus();
+  else { $('dimensions').hidden = true; resolutionEdited = false; renderControls(); $('menu').focus(); }
+}
+$('menu').onclick = () => showSettings(true);
+$('closeSettings').onclick = () => showSettings(false);
+$('settings').addEventListener('pointerdown', e => { if (e.target === $('settings')) showSettings(false); });
 $('mute').onclick = async () => {
   video.muted = !video.muted;
   buttonIcon('mute', video.muted ? 'muted' : 'sound', video.muted ? 'Unmute' : 'Mute');
@@ -156,10 +175,9 @@ $('lock').onclick = async () => {
 };
 document.addEventListener('pointerdown', e => {
   if (!e.target.closest('#contextMenu')) $('contextMenu').hidden = true;
-  if (!e.target.closest('#settings')) $('dimensions').hidden = true;
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { $('contextMenu').hidden = true; $('dimensions').hidden = true; }
+  if (e.key === 'Escape') { $('contextMenu').hidden = true; showSettings(false); }
 });
 function renderControls() {
   const active = running(), paused = state.isPaused || state.state === 'paused';
@@ -169,14 +187,12 @@ function renderControls() {
   buttonIcon('pause', 'pause', paused ? 'Resume' : 'Pause');
   $('pause').disabled = !ready || !active; $('pause').setAttribute('aria-pressed', String(Boolean(paused)));
   $('step').disabled = !ready || !paused || !active;
-  $('preset').disabled = !ready; $('resize').disabled = !ready; $('quality').disabled = !ready;
-  if (state.quality) $('quality').value = state.quality;
+  for (const input of $('settings').querySelectorAll('input[type="radio"]')) input.disabled = !ready;
+  $('resize').disabled = !ready;
+  if (state.quality) choose('quality', state.quality);
   if (state.width) {
-    $('preset').options[0].textContent = state.width + ' × ' + state.height;
-    if (!resolutionEdited && $('dimensions').hidden) {
-      const size = state.width + 'x' + state.height;
-      $('preset').value = [...$('preset').options].some(o => o.value === size) ? size : '';
-    }
+    $('currentSize').textContent = 'Current: ' + state.width + ' × ' + state.height;
+    if (!resolutionEdited && $('dimensions').hidden) choose('preset', state.width + 'x' + state.height);
   }
 }
 function updateState(next) {

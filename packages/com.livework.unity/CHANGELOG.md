@@ -30,6 +30,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Unity no longer logs `Failed to set remote answer sdp: Called in wrong state:
   stable` when a slow device answers a resent offer twice. The connection was
   not affected, but the error showed as a false alarm in the console.
+- The Android app centers the Connecting text and the server address on its
+  loading screen.
 
 ## [1.0.0] - 2026-09-25
 

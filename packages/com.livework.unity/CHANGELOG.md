@@ -5,6 +5,36 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-25
+
+### Added
+
+- **Scenes** tab in the web menu. Search every scene in the project. A
+  **Current** tag marks the scene that Play will run. When the game is stopped,
+  tap a scene to make it current, then press Play. When the game is running,
+  LiveWork asks, then restarts Play Mode in the chosen scene. The scene is not
+  opened in the Editor, and your Play Mode start scene is restored when you end
+  the server.
+- **Console** tab in the web menu. It shows Editor and game logs, including
+  compile errors, with stack traces. You can filter Info, Warning, and Error
+  logs, search, and copy one log. A red dot on the menu button means a new
+  error arrived. The service keeps the last 500 logs for reconnects.
+
+### Changed
+
+- The web menu button is now named **Menu** and has three tabs: Scenes,
+  Console, and Settings.
+- Debug builds of the Android app install next to the release app as
+  **LiveWork Dev**.
+
+### Fixed
+
+- Unity no longer logs `Failed to set remote answer sdp: Called in wrong state:
+  stable` when a slow device answers a resent offer twice. The connection was
+  not affected, but the error showed as a false alarm in the console.
+- The Android app centers the Connecting text and the server address on its
+  loading screen.
+
 ## [1.0.0] - 2026-09-25
 
 ### Added
@@ -74,5 +104,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - One Git URL installation with the patched Render Streaming runtime and the web
   service included.
 
+[1.1.0]: https://github.com/koezyrs/unity-livework/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/koezyrs/unity-livework/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/koezyrs/unity-livework/releases/tag/v0.2.0

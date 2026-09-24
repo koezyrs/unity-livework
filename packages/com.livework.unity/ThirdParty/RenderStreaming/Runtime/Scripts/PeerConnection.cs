@@ -260,6 +260,11 @@ namespace Unity.RenderStreaming
             var waitOtherProcess = new WaitWhile(() => _processingSetDescription);
             yield return waitOtherProcess;
 
+            // LiveWork: a resent offer can get a second answer after the first one made the
+            // connection stable. That late answer is stale; applying it only logs an error.
+            if (description.type == RTCSdpType.Answer && _peer.SignalingState != RTCSignalingState.HaveLocalOffer)
+                yield break;
+
             _ignoreOffer = description.type == RTCSdpType.Offer && !_polite && (_processingSetDescription || !IsStable());
 
             if (_ignoreOffer)

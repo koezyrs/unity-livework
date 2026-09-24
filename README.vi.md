@@ -52,12 +52,13 @@ Sửa script, bấm Play, và thử ngay trên điện thoại thật chỉ sau 
 | Unity Editor | **6000.3.11f1** hoặc **6000.2.7f2** |
 | Node.js | **22 trở lên**, có npm trong PATH |
 | Git | Đã cài và Unity Package Manager dùng được |
-| Mạng | [Tailscale](https://tailscale.com) trên cả hai thiết bị, hoặc localhost trên máy host |
+| Mạng | Cùng mạng Wi-Fi hoặc Ethernet (LAN), [Tailscale](https://tailscale.com), hoặc [ZeroTier](https://www.zerotier.com) trên cả hai thiết bị, hoặc localhost trên máy host |
 | Điện thoại | Android 8.0 trở lên (app hoặc Chrome), hoặc Chrome/Edge trên máy tính |
 | Âm thanh | Scene có một AudioListener đang bật |
 | Bàn phím/chuột | Active Input Handling là **Input System** hoặc **Both** |
 
-Cài Node.js, Git và Tailscale trước khi chạy LiveWork. Sau khi cài Node.js, khởi
+Cài Node.js và Git trước khi chạy LiveWork. Chỉ cần cài Tailscale hoặc ZeroTier
+nếu bạn dùng connection mode đó. Sau khi cài Node.js, khởi
 động lại Unity để Unity nhận PATH mới.
 
 ## Bắt đầu nhanh
@@ -69,12 +70,12 @@ Cài Node.js, Git và Tailscale trước khi chạy LiveWork. Sau khi cài Node.
 3. Dán URL sau:
 
    ```text
-   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v0.2.0
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.0.0
    ```
 
 4. Chờ Unity cài các package phụ thuộc và compile xong.
 
-Bỏ `#v0.2.0` nếu muốn luôn lấy code mới nhất từ nhánh `main`.
+Bỏ `#v1.0.0` nếu muốn luôn lấy code mới nhất từ nhánh `main`.
 
 ### 2. Cài app Android (không bắt buộc)
 
@@ -88,14 +89,27 @@ Không cần cáp USB hay bật chế độ nhà phát triển. Bạn cũng có 
 
 ### 3. Kết nối
 
-1. Mở scene của bạn, vào **Window → LiveWork** và bấm **Start server**.
-   Lần đầu chạy, LiveWork sẽ tải các thư viện cần thiết bằng npm.
-2. Chọn **Connection Mode** là **Android** nếu dùng app, hoặc **Web** nếu dùng trình duyệt.
-3. Quét mã QR bằng điện thoại.
-4. Bấm **Play** trên thanh công cụ, rồi chạm vào game.
+1. Mở scene của bạn, vào **Window → LiveWork**.
+2. Chọn **Connection Mode**: **LAN**, **Tailscale** hoặc **ZeroTier**.
+3. Bấm **Start server**. Lần đầu chạy, LiveWork sẽ tải các thư viện cần thiết bằng npm.
+4. Chọn **QRCode** là **Android** nếu dùng app, hoặc **Web** nếu dùng trình duyệt.
+5. Quét mã QR bằng điện thoại.
+6. Bấm **Play** trên thanh công cụ, rồi chạm vào game.
 
-Nếu dùng điện thoại, cả hai thiết bị phải cùng mạng Tailscale. Địa chỉ
-`127.0.0.1` chỉ dùng được trên chính máy host.
+Nếu dùng điện thoại, cả hai thiết bị phải cùng mạng của connection mode đã chọn.
+Địa chỉ `127.0.0.1` chỉ dùng được trên chính máy host.
+
+### Connection mode
+
+| Mode | Khi nào dùng | Service nhận kết nối từ |
+| --- | --- | --- |
+| **LAN** | Điện thoại và máy host cùng mạng Wi-Fi hoặc Ethernet | Subnet LAN của máy host, ví dụ `192.168.1.0/24` |
+| **Tailscale** | Mọi mạng, qua mạng riêng miễn phí [Tailscale](https://tailscale.com) | `100.64.0.0/10` và `fd7a:115c:a1e0::/48` |
+| **ZeroTier** | Mọi mạng, qua mạng riêng miễn phí [ZeroTier](https://www.zerotier.com) | Subnet mạng ZeroTier của máy host |
+
+Service luôn nhận kết nối từ localhost. Chỉ đổi được mode khi server đã dừng:
+bấm **End server** trước. Mode LAN chọn card mạng có default gateway, nên bỏ qua
+các card ảo (Hyper-V, VirtualBox, WSL).
 
 ## Cách dùng
 
@@ -106,7 +120,8 @@ Nếu dùng điện thoại, cả hai thiết bị phải cùng mạng Tailscale
 | Address · Copy | Sao chép địa chỉ |
 | Address · Open | Mở địa chỉ trong trình duyệt của máy host |
 | Pairing code | Mã 6 số để nhập trên thiết bị |
-| Connection Mode | **Web**: mã QR mở trình duyệt. **Android**: mã QR mở app LiveWork |
+| Connection Mode | **LAN**, **Tailscale** hoặc **ZeroTier**. Bị khóa khi server đang chạy |
+| QRCode | **Web**: mã QR mở trình duyệt. **Android**: mã QR mở app LiveWork |
 | Start server / End server | Bật hoặc tắt service LiveWork của project này |
 
 Mỗi lần bật server sẽ có mã kết nối mới. Khi tắt server, LiveWork trả lại cài
@@ -163,12 +178,13 @@ LiveWork không thay đổi cài đặt input, action map, input module hay scri
 
 - Mỗi project chạy một service riêng trên một cổng trống. Hãy copy địa chỉ từ
   cửa sổ LiveWork.
-- Service chỉ nhận kết nối từ localhost và địa chỉ Tailscale, và bắt buộc phải
-  nhập mã trước khi điều khiển hay xem hình.
+- Service chỉ nhận kết nối từ localhost và mạng của connection mode đã chọn, và
+  bắt buộc phải nhập mã trước khi điều khiển hay xem hình. Ở mode LAN, ai cùng
+  Wi-Fi cũng mở được trang, nên chỉ dùng LAN trên mạng bạn tin tưởng.
 - Hình ảnh và thao tác đi thẳng giữa hai thiết bị. LiveWork không dùng máy chủ
   STUN hay TURN công cộng.
-- App Android và trang web dùng HTTP thường trong mạng Tailscale riêng của bạn.
-  Không mở service ra internet công cộng.
+- App Android và trang web dùng HTTP thường trong mạng riêng của bạn. Không dùng
+  mode LAN trên Wi-Fi công cộng, và không mở service ra internet công cộng.
 - File `Library/LiveWork/host.json` chứa thông tin đăng nhập cục bộ. Không commit file này.
 
 ## Xử lý lỗi
@@ -177,7 +193,8 @@ LiveWork không thay đổi cài đặt input, action map, input module hay scri
 | --- | --- |
 | Start server bị lỗi | Cài Node.js 22+ kèm npm, khởi động lại Unity và đọc lỗi trong cửa sổ |
 | Lần chạy đầu bị lỗi | Kiểm tra kết nối npm và cài đặt proxy, rồi thử lại |
-| Điện thoại không mở được địa chỉ | Kết nối cả hai thiết bị vào Tailscale. Không dùng `127.0.0.1` trên điện thoại |
+| Điện thoại không mở được địa chỉ | Kết nối cả hai thiết bị vào mạng của connection mode đã chọn. Không dùng `127.0.0.1` trên điện thoại |
+| "No LAN network found" hoặc "ZeroTier is not connected" | Kết nối máy host vào mạng đó, hoặc chọn connection mode khác |
 | "Another browser may be controlling Unity" | Đóng tab hoặc app khác đang kết nối, rồi kết nối lại |
 | Mã kết nối bị từ chối | Dùng mã hiện tại. Bật lại server sẽ đổi mã |
 | Trùng assembly Render Streaming | Gỡ package `com.unity.renderstreaming` cài riêng |
@@ -207,7 +224,7 @@ npm test              # test service
 npm run test:ui       # test giao diện web bằng Playwright và Microsoft Edge
 npm run check:bundle  # kiểm tra bundle đã commit trong package
 npm run build         # tạo lại Service~ và runtime đi kèm
-npm run brand         # tạo lại toàn bộ file logo
+npm run brand         # tạo lại toàn bộ file logo và icon
 ```
 
 Cách build app Android: xem [android/README.md](android/README.md).
@@ -221,6 +238,18 @@ Cách test với Unity thật: xem [docs/TESTING.md](docs/TESTING.md).
 | `sample` | Project Unity mẫu và dữ liệu test |
 | `vendor` | Mã nguồn Render Streaming đã ghim phiên bản và các bản vá |
 | `docs` | Giao thức, ghi chú test và file thương hiệu |
+
+### Nhánh
+
+LiveWork dùng Git Flow:
+
+| Nhánh | Tạo từ | Merge vào | Mục đích |
+| --- | --- | --- | --- |
+| `main` | — | — | Code đã phát hành. Mỗi bản phát hành có tag `vX.Y.Z` |
+| `develop` | `main` | — | Code đã tích hợp cho bản phát hành tiếp theo |
+| `feature/<tên>` | `develop` | `develop` | Một tính năng hoặc thay đổi mới |
+| `release/<phiên-bản>` | `develop` | `main` và `develop` | Chuẩn bị phát hành |
+| `hotfix/<phiên-bản>` | `main` | `main` và `develop` | Sửa lỗi gấp cho bản đã phát hành |
 
 Khi báo lỗi, hãy ghi rõ phiên bản Unity, thiết bị và phiên bản trình duyệt hoặc
 app, input backend, các bước tái hiện lỗi và log. Xoá mã kết nối và token khỏi log.

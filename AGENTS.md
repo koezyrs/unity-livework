@@ -166,9 +166,11 @@ Kotlin (Android):
 
 LiveWork gives remote control of a developer's Editor. Treat these as hard rules:
 
-- The service accepts only loopback and Tailscale addresses
-  (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`). Do not widen this, add public
-  STUN/TURN servers, or bind in a way that exposes the service to the internet.
+- The service accepts only loopback and the networks of the connection mode
+  chosen in the Unity window: Tailscale (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`),
+  the host's LAN subnet, or the host's ZeroTier subnet. Unity passes them in
+  `LIVEWORK_TRUST`. Do not widen this, add public STUN/TURN servers, or bind in
+  a way that exposes the service to the internet.
 - Pairing is required before any control, signaling, or video. The Editor socket
   is loopback-only and needs the host token. Keep one controller per session.
 - Never commit or log secrets: `Library/LiveWork/host.json`, host tokens,
@@ -178,6 +180,10 @@ LiveWork gives remote control of a developer's Editor. Treat these as hard rules
 
 ## Git, commits, and pull requests
 
+- Branches follow Git Flow: `main` holds released code and `develop` holds
+  integrated work. Start `feature/<name>` from `develop` and merge it back.
+  Start `release/<version>` from `develop` and `hotfix/<version>` from `main`;
+  merge both into `main` and `develop`, and tag the release on `main`.
 - Use [Conventional Commits](https://www.conventionalcommits.org/):
   `<type>(<optional scope>): <description>`. Allowed types: `feat`, `fix`,
   `refactor`, `perf`, `style`, `test`, `docs`, `build`, `ops`, `chore`.

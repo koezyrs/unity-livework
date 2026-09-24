@@ -21,6 +21,14 @@ Each component keeps its own license.
 - Copyright (c) 2018 Manuel Bleichenbacher
 - License: MIT. See `Editor/ThirdParty/QrCodeGenerator/LICENSE.txt`.
 
+## Connection mode logos
+
+- Location: `Editor/Icons/Tailscale.png`, `Editor/Icons/ZeroTier.png`
+- Source: [Simple Icons](https://simpleicons.org) 16.32.0, CC0 1.0.
+- Tailscale is a trademark of Tailscale Inc. ZeroTier is a trademark of
+  ZeroTier, Inc. The logos are used only to identify each network in the
+  Connection Mode menu. LiveWork is not affiliated with these companies.
+
 ## ws
 
 - Installed by npm when the LiveWork service starts for the first time.

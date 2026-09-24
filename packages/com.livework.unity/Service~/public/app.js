@@ -57,7 +57,7 @@ async function pair(code) {
     const body = await res.json(); if (!res.ok) throw new Error(body.error);
     $('code').value = ''; await connectControl();
   } catch (err) {
-    showWorkspace(false); $('pairError').textContent = err instanceof TypeError ? 'Cannot reach LiveWork. Check the server and your Tailscale connection.' : err.message;
+    showWorkspace(false); $('pairError').textContent = err instanceof TypeError ? 'Cannot reach LiveWork. Check the server and your network (LAN, Tailscale, or ZeroTier).' : err.message;
   } finally { pairing = false; $('connectButton').disabled = false; $('connectButton').textContent = 'Connect'; }
 }
 $('pairing').addEventListener('submit', e => { e.preventDefault(); pair($('code').value.trim()); });
@@ -77,7 +77,7 @@ async function connectControl() {
     }
   } catch {
     if (attempt !== controlGeneration) return;
-    if (!connectedOnce) { showWorkspace(false); $('pairError').textContent = 'Cannot reach LiveWork. Check the server and your Tailscale connection.'; }
+    if (!connectedOnce) { showWorkspace(false); $('pairError').textContent = 'Cannot reach LiveWork. Check the server and your network (LAN, Tailscale, or ZeroTier).'; }
     reconnectTimer = setTimeout(connectControl, 2000); return;
   }
   if (attempt !== controlGeneration || (control && control.readyState < 2)) return;

@@ -300,7 +300,7 @@ class MainActivity : Activity() {
             visibility = View.GONE
         }
         val input = EditText(this).apply {
-            hint = "100.x.y.z:port"
+            hint = "192.168.1.20:port"
             setText(prefs.getString("url", "")?.removePrefix("http://"))
             setSelection(text.length)
             setSingleLine()
@@ -315,7 +315,7 @@ class MainActivity : Activity() {
         val confirm = {
             val url = normalize(input.text.toString())
             if (url == null) {
-                error.text = "Enter an address such as 100.101.102.103:8080"
+                error.text = "Enter an address such as 192.168.1.20:8080 or 100.101.102.103:8080"
                 error.visibility = View.VISIBLE
             } else {
                 dialog.dismiss()
@@ -490,7 +490,7 @@ class MainActivity : Activity() {
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) showHome("Cannot reach LiveWork: ${error.description}. Check that the server is running and that Tailscale is connected.")
+                if (request.isForMainFrame) showHome("Cannot reach LiveWork: ${error.description}. Check that the server is running and that this phone is on the network chosen in Unity (LAN, Tailscale, or ZeroTier).")
             }
         }
         created.webChromeClient = object : WebChromeClient() {

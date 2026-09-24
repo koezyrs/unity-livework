@@ -19,6 +19,7 @@ You should get a reply within 7 days.
 
 ## Scope
 
-LiveWork is built for private networks: localhost and Tailscale. The service
-accepts only these addresses and requires a pairing code. Exposing the service to
+LiveWork is built for private networks: localhost, a trusted LAN, Tailscale, or
+ZeroTier. The service accepts only localhost and the network of the connection
+mode chosen in Unity, and it requires a pairing code. Exposing the service to
 the public internet is not supported.

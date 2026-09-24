@@ -3,6 +3,7 @@ import { readFile, mkdir, writeFile, unlink } from 'node:fs/promises';
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { BlockList, isIPv4 } from 'node:net';
 import { createRequire } from 'node:module';
 import { WebSocketServer, WebSocket } from 'ws';
 
@@ -12,12 +13,21 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const commands = new Set(['Play', 'Stop', 'Pause', 'Resume', 'Step', 'SetResolution', 'SetStreamQuality']);
 const qualities = new Set(['smooth', 'balanced', 'sharp']);
 const loopback = address => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address);
-const trustedNetwork = address => {
-  if (loopback(address)) return true;
-  if (address?.startsWith('fd7a:115c:a1e0:')) return true;
-  const parts = address?.replace(/^::ffff:/, '').split('.');
-  return parts?.length === 4 && parts[0] === '100' && Number(parts[1]) >= 64 && Number(parts[1]) <= 127;
-};
+export const tailscale = ['100.64.0.0/10', 'fd7a:115c:a1e0::/48'];
+/** Returns a check that accepts loopback and any address inside the given CIDR ranges. */
+export function createTrust(cidrs) {
+  const list = new BlockList();
+  for (const cidr of cidrs) {
+    const [network, prefix] = cidr.split('/');
+    list.addSubnet(network, Number(prefix), isIPv4(network) ? 'ipv4' : 'ipv6');
+  }
+  return address => {
+    if (typeof address !== 'string') return false;
+    if (loopback(address)) return true;
+    const plain = address.replace(/^::ffff:(?=\d+\.)/, '');
+    try { return list.check(plain, isIPv4(plain) ? 'ipv4' : 'ipv6'); } catch { return false; }
+  };
+}
 const equal = (a, b) => {
   if (typeof a !== 'string') return false;
   const left = Buffer.from(a), right = Buffer.from(b);
@@ -26,7 +36,8 @@ const equal = (a, b) => {
 const send = (ws, msg) => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
 const cookie = req => /(?:^|;\s*)livework=([^;]+)/.exec(req.headers.cookie || '')?.[1];
 
-export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = String(randomInt(100000, 1000000)), hostToken = randomBytes(32).toString('hex'), persist = false, stateDirectory = path.join(root, '.local') } = {}) {
+export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = String(randomInt(100000, 1000000)), hostToken = randomBytes(32).toString('hex'), persist = false, stateDirectory = path.join(root, '.local'), mode = 'tailscale', trust = tailscale } = {}) {
+  const trustedNetwork = createTrust(trust);
   let editor, controller, signalEditor, signalBrowser, session, sessionExpires = 0, editorLostTimer;
   const editorOffline = 'Unity Editor is not connected. Open Window > LiveWork in Unity and start the server.';
   let state = { v: 1, type: 'state', state: 'offline', message: 'Waiting for Unity Editor…', width: 0, height: 0 };
@@ -41,7 +52,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const json = (status, data, headers = {}) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers }); res.end(JSON.stringify(data)); };
-    if (!trustedNetwork(req.socket.remoteAddress)) return json(403, { error: 'This address is not allowed. Connect through Tailscale.' });
+    if (!trustedNetwork(req.socket.remoteAddress)) return json(403, { error: 'This address is not allowed. Use the network chosen in the Unity LiveWork window.' });
     if (!sameOrigin(req)) return json(403, { error: 'Origin rejected' });
     if (url.pathname === '/api/shutdown') {
       if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
@@ -150,7 +161,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
   heartbeat.unref();
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve); });
   const actualPort = server.address().port;
-  const config = { port: actualPort, host, code, hostToken, pid: process.pid };
+  const config = { port: actualPort, host, code, hostToken, pid: process.pid, mode, trust };
   if (persist) { await mkdir(stateDirectory, { recursive: true }); await writeFile(path.join(stateDirectory, 'host.json'), JSON.stringify(config, null, 2)); }
   function close() {
     if (closing) return closing;
@@ -167,7 +178,8 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  const app = await createLiveWork({ port: Number(process.env.LIVEWORK_PORT || 8080), host: process.env.LIVEWORK_BIND || '0.0.0.0', stateDirectory: process.env.LIVEWORK_STATE_DIRECTORY, persist: true });
-  console.log(`Unity LiveWork: http://${app.host}:${app.port}\nPairing code: ${app.code}\nBind to a Tailscale IP with LIVEWORK_BIND to enable remote access.`);
+  const app = await createLiveWork({ port: Number(process.env.LIVEWORK_PORT || 8080), host: process.env.LIVEWORK_BIND || '0.0.0.0', stateDirectory: process.env.LIVEWORK_STATE_DIRECTORY, persist: true,
+    mode: process.env.LIVEWORK_MODE || 'tailscale', trust: process.env.LIVEWORK_TRUST ? process.env.LIVEWORK_TRUST.split(',').map(s => s.trim()).filter(Boolean) : tailscale });
+  console.log(`Unity LiveWork: http://${app.host}:${app.port}\nPairing code: ${app.code}\nConnection mode: ${app.mode}. Trusted networks: ${app.trust.join(', ')}`);
   for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => app.close().then(() => process.exit(0)));
 }

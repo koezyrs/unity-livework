@@ -51,6 +51,7 @@ class MainActivity : Activity() {
             window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        drawEdgeToEdge()
         connectView = buildConnectView()
         root.addView(connectView)
         setContentView(root)
@@ -204,6 +205,37 @@ class MainActivity : Activity() {
         setFullScreen(false)
     }
 
+    /**
+     * Draws behind the system bars and the camera cutout on every Android version,
+     * then pads the content so nothing sits under them.
+     */
+    private fun drawEdgeToEdge() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) window.setDecorFitsSystemWindows(false)
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val safe = safeArea(insets)
+            view.setPadding(safe[0], safe[1], safe[2], safe[3])
+            insets
+        }
+    }
+
+    /** Returns left, top, right, bottom space taken by visible system bars, the cutout, and the keyboard. */
+    private fun safeArea(insets: WindowInsets): IntArray {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val types = WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime()
+            val area = insets.getInsets(types)
+            return intArrayOf(area.left, area.top, area.right, area.bottom)
+        }
+        @Suppress("DEPRECATION")
+        val area = intArrayOf(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) insets.displayCutout?.let {
+            area[0] = maxOf(area[0], it.safeInsetLeft)
+            area[1] = maxOf(area[1], it.safeInsetTop)
+            area[2] = maxOf(area[2], it.safeInsetRight)
+            area[3] = maxOf(area[3], it.safeInsetBottom)
+        }
+        return area
+    }
+
     private fun setFullScreen(enabled: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val controller = window.insetsController ?: return
@@ -212,13 +244,15 @@ class MainActivity : Activity() {
                 controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             } else controller.show(WindowInsets.Type.systemBars())
         } else {
+            // Layout flags stay on so the app always draws edge to edge and pads itself.
             @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = if (enabled) {
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            } else 0
+            val layout = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            @Suppress("DEPRECATION")
+            val hidden = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = if (enabled) layout or hidden else layout
         }
+        root.requestApplyInsets()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

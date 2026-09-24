@@ -45,6 +45,11 @@ android {
     }
 
     buildTypes {
+        // A separate application ID lets the debug app sit next to the release app.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

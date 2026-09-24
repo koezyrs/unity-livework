@@ -9,12 +9,14 @@ namespace LiveWork.Editor
     {
         const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         static readonly Type ViewType = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
+        static readonly PropertyInfo RenderSizeProperty = ViewType.GetProperty("targetRenderSize", Flags);
+        static readonly FieldInfo TextureField = ViewType.GetField("m_RenderTexture", Flags);
         static EditorWindow view;
         public static EditorWindow View => view != null ? view : view = EditorWindow.GetWindow(ViewType);
         public static Vector2Int Size {
-            get { var v = (Vector2)ViewType.GetProperty("targetRenderSize", Flags).GetValue(View); return new Vector2Int(Mathf.Max(2, (int)v.x), Mathf.Max(2, (int)v.y)); }
+            get { var v = (Vector2)RenderSizeProperty.GetValue(View); return new Vector2Int(Mathf.Max(2, (int)v.x), Mathf.Max(2, (int)v.y)); }
         }
-        public static RenderTexture Texture => ViewType.GetField("m_RenderTexture", Flags).GetValue(View) as RenderTexture;
+        public static RenderTexture Texture => TextureField.GetValue(View) as RenderTexture;
         static object Group() {
             var type = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameViewSizes");
             var instance = type.BaseType.GetProperty("instance", Flags).GetValue(null);

@@ -23,14 +23,17 @@ have `v: 1`. JSON is capped at 128 KiB; data channel input is capped at 8 KiB.
 {"v":1,"type":"result","id":"unique-request-id","ok":true,"message":"Completed"}
 ```
 
-Commands: `Play`, `Stop`, `Pause`, `Resume`, `Step`, `SetResolution`.
+Commands: `Play`, `Stop`, `Pause`, `Resume`, `Step`, `SetResolution`, `SetStreamQuality`.
+`SetStreamQuality` takes `quality`: `smooth` (960 px longest edge, 2.5 Mbps),
+`balanced` (default, 1280 px, 4 Mbps) or `sharp` (1280 px, 8 Mbps). All run at
+30 FPS. The Editor recreates the stream with the new settings, so `revision` changes.
 The Editor replies only after observing completion, or replies with an error.
 Requests are not queued for an offline Editor or replayed on reconnect. A pending
 transition may survive domain reload via SessionState; this resumes observation,
 not execution. The service times out after 20 seconds.
 
 State contains `state`, `message`, `width`, `height`, `revision`, `frame`,
-`inputMode`, `unity`, `streaming`, `isPlaying`, `isPaused`. `state` is one of
+`inputMode`, `quality`, `unity`, `streaming`, `isPlaying`, `isPaused`. `state` is one of
 `offline`, `stopped`, `playing`, `paused`, `reloading`, `error`. Connection setup
 is displayed as `connecting` by the client. `revision` changes on every recreated
 stream; input from an old revision is discarded.

@@ -126,6 +126,7 @@ $('preset').onchange = e => {
   }
   if (e.target.value) resize(...e.target.value.split('x').map(Number));
 };
+$('quality').onchange = e => { command('SetStreamQuality', { quality: e.target.value }); };
 $('mute').onclick = async () => {
   video.muted = !video.muted;
   buttonIcon('mute', video.muted ? 'muted' : 'sound', video.muted ? 'Unmute' : 'Mute');
@@ -168,7 +169,8 @@ function renderControls() {
   buttonIcon('pause', 'pause', paused ? 'Resume' : 'Pause');
   $('pause').disabled = !ready || !active; $('pause').setAttribute('aria-pressed', String(Boolean(paused)));
   $('step').disabled = !ready || !paused || !active;
-  $('preset').disabled = !ready; $('resize').disabled = !ready;
+  $('preset').disabled = !ready; $('resize').disabled = !ready; $('quality').disabled = !ready;
+  if (state.quality) $('quality').value = state.quality;
   if (state.width) {
     $('preset').options[0].textContent = state.width + ' × ' + state.height;
     if (!resolutionEdited && $('dimensions').hidden) {
@@ -206,6 +208,9 @@ async function startMedia() {
   };
   rs.onTrackEvent = e => {
     if (ticket !== generation) return; media.addTrack(e.track);
+    // Play frames as soon as they arrive instead of buffering for smoothness.
+    if ('jitterBufferTarget' in e.receiver) e.receiver.jitterBufferTarget = 0;
+    else if ('playoutDelayHint' in e.receiver) e.receiver.playoutDelayHint = 0;
     video.play().catch(() => showMessage('Tap Sound or Play to allow video playback.'));
   };
   rs.onDisconnect = () => { if (ticket === generation) retryMedia(); };

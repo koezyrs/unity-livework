@@ -36,6 +36,9 @@ test('pairing, exclusive control, command validation, and reconnect without repl
     reply = message(control, m => m.id === 'badsize');
     control.send(JSON.stringify({ v: 1, type: 'command', command: 'SetResolution', id: 'badsize', width: 999999, height: 721 }));
     assert.equal((await reply).ok, false);
+    reply = message(control, m => m.id === 'badquality');
+    control.send(JSON.stringify({ v: 1, type: 'command', command: 'SetStreamQuality', id: 'badquality', quality: 'ultra' }));
+    assert.equal((await reply).ok, false);
     const forwarded = message(editor, m => m.type === 'command');
     control.send(JSON.stringify({ v: 1, type: 'command', command: 'Play', id: 'play1' }));
     assert.equal((await forwarded).id, 'play1');

@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Linq;
 using System.Text;
 using Unity.RenderStreaming;
 using Unity.WebRTC;
@@ -21,7 +22,7 @@ namespace LiveWork
         StreamingScheduler scheduler;
         public RenderTexture Texture => texture;
 
-        public void Initialize(string signalingUrl, int width, int height)
+        public void Initialize(string signalingUrl, int width, int height, uint maxBitrate)
         {
             scheduler = new StreamingScheduler(this);
             texture = new RenderTexture(width, height, 0) {
@@ -36,7 +37,9 @@ namespace LiveWork
             video.sourceTexture = texture;
             video.SetTextureSize(new Vector2Int(width, height));
             video.SetFrameRate(30);
-            video.SetBitrate(1000, 8000);
+            video.SetBitrate(Math.Min(500u, maxBitrate), maxBitrate);
+            var h264 = PreferredCodec();
+            if (h264 != null) video.SetCodec(h264);
             broadcast.AddComponent(video);
             audioSender = gameObject.AddComponent<AudioStreamSender>();
             audioSender.source = AudioStreamSource.AudioListener;
@@ -53,6 +56,16 @@ namespace LiveWork
             manager.SetSignalingSettings(new WebSocketSignalingSettings(signalingUrl, Array.Empty<IceServer>()));
             manager.AddSignalingHandler(broadcast);
             manager.Run(new RTCConfiguration { iceServers = Array.Empty<RTCIceServer>() });
+        }
+
+        // H264 can use the GPU encoder on the host and the hardware decoder on phones.
+        // Constrained Baseline is the profile every Android Chrome decoder accepts.
+        static VideoCodecInfo PreferredCodec()
+        {
+            var codecs = VideoStreamSender.GetAvailableCodecs().Where(c => c.mimeType == "video/H264").ToArray();
+            return codecs.FirstOrDefault(c => c.sdpFmtpLine != null && c.sdpFmtpLine.Contains("profile-level-id=42e0") && c.sdpFmtpLine.Contains("packetization-mode=1"))
+                ?? codecs.FirstOrDefault(c => c.sdpFmtpLine != null && c.sdpFmtpLine.Contains("packetization-mode=1"))
+                ?? codecs.FirstOrDefault();
         }
 
         public void RefreshAudio()

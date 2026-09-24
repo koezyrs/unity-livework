@@ -37,6 +37,9 @@
         <option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option>
         <option value="1920x1080">1920 × 1080</option><option value="custom">Custom…</option>
       </select>
+      <select id="quality" disabled aria-label="Stream quality" title="Stream quality">
+        <option value="smooth">Smooth</option><option value="balanced">Balanced</option><option value="sharp">Sharp</option>
+      </select>
       <div class="view-actions">
         <button id="mute" class="icon-button" aria-pressed="true" aria-label="Unmute" title="Unmute"></button>
         <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Enter fullscreen"></button>
@@ -50,7 +53,7 @@
     </section>
     </header>
     <main id="stage" tabindex="0" aria-label="Interactive Unity Game View">
-      <video id="video" autoplay playsinline muted></video><canvas id="lastFrame" hidden></canvas>
+      <video id="video" autoplay playsinline muted disablepictureinpicture></video><canvas id="lastFrame" hidden></canvas>
       <div id="overlay" role="status">Waiting for Unity…</div>
       <div id="message" role="status" hidden></div>
       <button id="exitFullscreen" class="icon-button" aria-label="Exit fullscreen" title="Exit fullscreen" hidden></button>

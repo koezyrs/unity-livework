@@ -57,7 +57,7 @@ h1 { font-size: 26px; letter-spacing: -.7px; line-height: 1.2; font-weight: 600;
 #status[data-state="error"]::before { background: #ffb4ab; }
 #settings { position: relative; display: flex; align-items: center; justify-self: end; gap: 8px; min-width: 0; z-index: 2; }
 .resolution-label { font-size: 12px; color: var(--muted); }
-#preset { background: transparent; border-color: transparent; font-size: 12px; max-width: 190px; }
+#preset, #quality { background: transparent; border-color: transparent; font-size: 12px; max-width: 190px; }
 .view-actions { display: flex; margin-left: auto; gap: 4px; }
 #mute[aria-pressed="true"] { background: transparent; color: var(--muted); border-color: transparent; }
 #dimensions { position: absolute; top: calc(100% + 8px); right: 0; width: min(344px, calc(100vw - 32px)); padding: 16px; display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 28px #0008; }
@@ -77,6 +77,8 @@ video, canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-
 @media (max-width: 1100px) {
   .resolution-label { display: none; }
   .identity { gap: 10px; }
+  #preset { max-width: 112px; padding-right: 22px; }
+  #quality { width: 104px; padding-right: 22px; }
 }
 @media (max-width: 700px) {
   #toolbar { display: flex; padding: 6px 8px; gap: 0; }
@@ -87,6 +89,7 @@ video, canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-
   #settings { flex: 1; gap: 0; margin-left: 4px; }
   .resolution-label { display: none; }
   #preset { padding-left: 4px; padding-right: 0; min-width: 0; flex: 1; width: 0; max-width: none; font-size: 11px; }
+  #quality { padding: 0 2px; min-width: 0; flex: 1; width: 0; max-width: 76px; font-size: 11px; }
   .view-actions { gap: 0; }
 }
 @media (max-height: 500px) and (orientation: landscape) {

@@ -9,9 +9,21 @@ export function pointInVideo(clientX, clientY, rect, width, height, clamp = fals
   return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
 }
 
-export function bindInput(stage, video, send, enabled) {
+export function bindInput(stage, video, sendNow, enabled) {
   const fingers = new Map(); let mouseButtons = 0;
-  const reset = () => { fingers.clear(); mouseButtons = 0; send({ type: 'reset' }); };
+  // Moves are merged and sent once per display frame, so a fast pointer does not flood the
+  // reliable data channel. Every other message flushes pending moves first to keep order.
+  const moves = new Map(); let frame = 0;
+  const flush = () => { cancelAnimationFrame(frame); frame = 0; for (const message of moves.values()) sendNow(message); moves.clear(); };
+  const send = message => { flush(); sendNow(message); };
+  function move(key, message) {
+    const previous = moves.get(key);
+    if (previous && previous.buttons !== message.buttons) flush();
+    else if (previous && message.type === 'mouse') { message.dx += previous.dx; message.dy += previous.dy; }
+    moves.set(key, message);
+    if (!frame) frame = requestAnimationFrame(flush);
+  }
+  const reset = () => { moves.clear(); flush(); fingers.clear(); mouseButtons = 0; send({ type: 'reset' }); };
   const point = (e, clamp) => pointInVideo(e.clientX, e.clientY, stage.getBoundingClientRect(), video.videoWidth, video.videoHeight, clamp);
   function pointer(e, phase) {
     if (!enabled() || e.target.closest('button,form,input,select')) return;
@@ -24,13 +36,15 @@ export function bindInput(stage, video, send, enabled) {
         if (id > 10) return; fingers.set(e.pointerId, id);
       }
       const id = fingers.get(e.pointerId); if (!id) return;
-      send({ type: 'touch', id, phase, ...p });
+      if (phase === 'moved') move(id, { type: 'touch', id, phase, ...p });
+      else send({ type: 'touch', id, phase, ...p });
       if (phase === 'ended' || phase === 'canceled') fingers.delete(e.pointerId);
     } else {
       // DOM and Input System use left=1, right=2, middle=4.
       mouseButtons = phase === 'canceled' ? 0 : e.buttons;
       const r = contentRect(stage.getBoundingClientRect(), video.videoWidth, video.videoHeight);
-      send({ type: 'mouse', ...p, buttons: mouseButtons, locked: document.pointerLockElement === stage, dx: e.movementX / r.width, dy: e.movementY / r.height, scroll: 0 });
+      const message = { type: 'mouse', ...p, buttons: mouseButtons, locked: document.pointerLockElement === stage, dx: e.movementX / r.width, dy: e.movementY / r.height, scroll: 0 };
+      if (phase === 'moved') move('mouse', message); else send(message);
     }
   }
   stage.addEventListener('pointerdown', e => pointer(e, 'began'));

@@ -17,10 +17,10 @@ using Object = UnityEngine.Object;
 namespace LiveWork.Editor
 {
     [Serializable] public class HostConfig { public int port, pid; public string host, code, hostToken; }
-    [Serializable] public class Command { public int v, width, height; public string type, id, command; }
+    [Serializable] public class Command { public int v, width, height; public string type, id, command, quality; }
     [Serializable] public class HostState {
         public int v = 1, width, height, revision, frame;
-        public string type = "state", state, message, inputMode, unity = Application.unityVersion;
+        public string type = "state", state, message, inputMode, quality, unity = Application.unityVersion;
         public bool streaming, isPlaying, isPaused;
     }
     [Serializable] public class CommandResult { public int v = 1; public string type = "result", id, message; public bool ok; }
@@ -41,6 +41,9 @@ namespace LiveWork.Editor
         static bool playReady;
         static bool originalBackground;
         static string error;
+        // Longest stream edge and maximum bitrate (kbps) for each browser quality choice.
+        static readonly (string name, int edge, uint bitrate)[] Qualities = { ("smooth", 960, 2500), ("balanced", 1280, 4000), ("sharp", 1280, 8000) };
+        static string Quality => SessionState.GetString("LiveWork.Quality", "balanced");
         public static bool Enabled => SessionState.GetBool("LiveWork.Enabled", false);
         public static string Status { get; private set; } = "Disabled";
         public static HostConfig Config { get; private set; }
@@ -151,9 +154,11 @@ namespace LiveWork.Editor
             }
             input?.CheckTimeout();
             if (stream != null && now >= nextCapture) {
-                nextCapture = now + 1.0 / 30;
+                // Keep a fixed cadence instead of drifting by the late part of each tick.
+                nextCapture = Math.Max(nextCapture + 1.0 / 30, now);
                 try {
-                    GameViewBridge.View.Repaint();
+                    // Play Mode repaints the Game View every frame; a paused game needs a manual repaint.
+                    if (EditorApplication.isPaused) GameViewBridge.View.Repaint();
                     var source = GameViewBridge.Texture;
                     if (source != null && stream.Texture != null) {
                         // WebRTC's default texture copy flips Direct3D render textures.
@@ -168,9 +173,12 @@ namespace LiveWork.Editor
             if (now >= nextState) { nextState = now + .5; Publish(); }
         }
 
+        // Active Input Handling changes require an Editor restart, so one read per domain is enough.
+        static int inputMode = -1;
         static int InputMode() {
+            if (inputMode >= 0) return inputMode;
             var settings = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0]);
-            return settings.FindProperty("activeInputHandler").intValue;
+            return inputMode = settings.FindProperty("activeInputHandler").intValue;
         }
 
         static void StartStream()
@@ -178,14 +186,15 @@ namespace LiveWork.Editor
             var size = GameViewBridge.Size;
             // Encoder requires even dimensions; initial rendering keeps the user's Game View size.
             int w = Mathf.Max(2, size.x / 2 * 2), h = Mathf.Max(2, size.y / 2 * 2);
-            float scale = Mathf.Min(1, Mathf.Min(1280f / w, 1280f / h));
+            var quality = Qualities.First(q => q.name == Quality);
+            float scale = Mathf.Min(1, Mathf.Min((float)quality.edge / w, (float)quality.edge / h));
             w = Mathf.Max(2, (int)(w * scale) / 2 * 2); h = Mathf.Max(2, (int)(h * scale) / 2 * 2);
             revision = SessionState.GetInt("LiveWork.Revision", 0) + 1; SessionState.SetInt("LiveWork.Revision", revision);
             input = new InputBackend(size.x, size.y, revision, InputMode());
             var go = new GameObject("LiveWork Session") { hideFlags = HideFlags.DontSave };
             Object.DontDestroyOnLoad(go);
             stream = go.AddComponent<LiveWorkStream>();
-            stream.Initialize($"ws://127.0.0.1:{Config.port}/signal/editor?token={Config.hostToken}", w, h);
+            stream.Initialize($"ws://127.0.0.1:{Config.port}/signal/editor?token={Config.hostToken}", w, h, quality.bitrate);
             Application.runInBackground = true;
             Publish();
         }
@@ -277,6 +286,10 @@ namespace LiveWork.Editor
                     case "SetResolution":
                         if (cmd.width < 240 || cmd.height < 240 || cmd.width > 1920 || cmd.height > 1920 || cmd.width % 2 != 0 || cmd.height % 2 != 0 || (long)cmd.width * cmd.height > 2073600) throw new ArgumentException("Unsupported resolution");
                         StopStream(); GameViewBridge.Resize(cmd.width, cmd.height); break;
+                    case "SetStreamQuality":
+                        if (!Qualities.Any(q => q.name == cmd.quality)) throw new ArgumentException("Unknown stream quality");
+                        // Update() recreates the stream with the new settings while Play Mode is active.
+                        SessionState.SetString("LiveWork.Quality", cmd.quality); StopStream(); break;
                     default: throw new ArgumentException("Unknown command");
                 }
                 pending = cmd; pendingSince = EditorApplication.timeSinceStartup;
@@ -290,7 +303,7 @@ namespace LiveWork.Editor
             var size = GameViewBridge.Size;
             bool done = pending.command == "Play" ? EditorApplication.isPlaying : pending.command == "Stop" ? !EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode :
                 pending.command == "Pause" ? EditorApplication.isPaused : pending.command == "Resume" ? !EditorApplication.isPaused :
-                pending.command == "Step" ? Time.frameCount > stepStart : size.x == pending.width && size.y == pending.height;
+                pending.command == "Step" ? Time.frameCount > stepStart : pending.command == "SetStreamQuality" ? Quality == pending.quality : size.x == pending.width && size.y == pending.height;
             if (done || now - pendingSince > 15) { Reply(pending, done, done ? "Completed" : "Editor did not reach the requested state"); pending = null; Publish(); }
         }
         static void Reply(Command cmd, bool ok, string message) => Send(new CommandResult { id = cmd.id, ok = ok, message = message });
@@ -302,7 +315,7 @@ namespace LiveWork.Editor
             var mode = InputMode();
             Status = error != null ? "error" : reloading || EditorApplication.isCompiling ? "reloading" : EditorApplication.isPlaying ? EditorApplication.isPaused ? "paused" : "playing" : "stopped";
             Send(new HostState { state = Status, message = error ?? "", width = size.x, height = size.y, revision = revision,
-                frame = EditorApplication.isPlaying ? Time.frameCount : 0, inputMode = mode == 0 ? "legacy-touch" : mode == 1 ? "input-system" : "both", streaming = stream != null,
+                frame = EditorApplication.isPlaying ? Time.frameCount : 0, inputMode = mode == 0 ? "legacy-touch" : mode == 1 ? "input-system" : "both", quality = Quality, streaming = stream != null,
                 isPlaying = EditorApplication.isPlaying, isPaused = EditorApplication.isPaused });
         }
     }

@@ -9,7 +9,7 @@ const app = await createLiveWork({ port: 0, code: '123456' });
 const url = `http://127.0.0.1:${app.port}`;
 const editor = new WebSocket(`ws://127.0.0.1:${app.port}/editor?token=${app.hostToken}`);
 await new Promise((resolve, reject) => { editor.once('open', resolve); editor.once('error', reject); });
-let state = { v: 1, type: 'state', state: 'stopped', isPlaying: false, isPaused: false, width: 1280, height: 720, streaming: false, frame: 0, revision: 0 };
+let state = { v: 1, type: 'state', state: 'stopped', isPlaying: false, isPaused: false, width: 1280, height: 720, quality: 'balanced', streaming: false, frame: 0, revision: 0 };
 const commands = [];
 editor.on('message', bytes => {
   const msg = JSON.parse(bytes);
@@ -21,6 +21,7 @@ editor.on('message', bytes => {
   if (msg.command === 'Resume') Object.assign(state, { state: 'playing', isPaused: false });
   if (msg.command === 'Step') state.frame++;
   if (msg.command === 'SetResolution') Object.assign(state, { width: msg.width, height: msg.height });
+  if (msg.command === 'SetStreamQuality') state.quality = msg.quality;
   editor.send(JSON.stringify(state));
   editor.send(JSON.stringify({ v: 1, type: 'result', id: msg.id, ok: true }));
 });
@@ -73,6 +74,10 @@ try {
   await page.locator('#width').fill('800'); await page.locator('#height').fill('600'); await page.locator('#resize').click();
   await expect.poll(() => state.width).toBe(800);
   await expect(page.locator('#dimensions')).toBeHidden();
+  await expect(page.locator('#quality')).toHaveValue('balanced');
+  await page.locator('#quality').selectOption('smooth');
+  await expect.poll(() => state.quality).toBe('smooth');
+  await expect(page.locator('#quality')).toBeEnabled();
   await page.locator('#mute').click(); await expect(page.locator('#mute')).toHaveAttribute('aria-label', 'Mute');
   assert.equal(await page.locator('#video').evaluate(v => v.muted), false);
   await page.locator('#mute').click();

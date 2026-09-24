@@ -9,7 +9,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 const require = createRequire(import.meta.url);
 const signaling = require('./generated/signaling.cjs');
 const root = path.dirname(fileURLToPath(import.meta.url));
-const commands = new Set(['Play', 'Stop', 'Pause', 'Resume', 'Step', 'SetResolution']);
+const commands = new Set(['Play', 'Stop', 'Pause', 'Resume', 'Step', 'SetResolution', 'SetStreamQuality']);
+const qualities = new Set(['smooth', 'balanced', 'sharp']);
 const loopback = address => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address);
 const trustedNetwork = address => {
   if (loopback(address)) return true;
@@ -121,6 +122,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         if (msg.type !== 'command' || typeof msg.id !== 'string' || msg.id.length > 128 || !commands.has(msg.command)) return result(ws, msg.id, false, 'Invalid command');
         if (pending.has(msg.id) || pending.size >= 16) return result(ws, msg.id, false, 'Command already pending or queue full');
         if (msg.command === 'SetResolution' && (!Number.isInteger(msg.width) || !Number.isInteger(msg.height) || msg.width < 240 || msg.height < 240 || msg.width > 1920 || msg.height > 1920 || msg.width % 2 || msg.height % 2 || msg.width * msg.height > 2073600)) return result(ws, msg.id, false, 'Use even dimensions 240–1920, up to 2,073,600 pixels');
+        if (msg.command === 'SetStreamQuality' && !qualities.has(msg.quality)) return result(ws, msg.id, false, 'Unknown stream quality');
         if (!editor || editor.readyState !== WebSocket.OPEN) return result(ws, msg.id, false, 'Editor is disconnected; command was not queued');
         pending.set(msg.id, { ws, timer: setTimeout(() => { pending.delete(msg.id); result(ws, msg.id, false, 'Editor did not confirm completion; check its current state'); }, 20000) });
         send(editor, msg);

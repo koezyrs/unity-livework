@@ -11,8 +11,8 @@ android {
         applicationId = "com.livework.client"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.2.0"
     }
 
     buildTypes {
@@ -31,4 +31,9 @@ kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
+}
+
+dependencies {
+    // QR scanning with the camera; works without Google Play services.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }

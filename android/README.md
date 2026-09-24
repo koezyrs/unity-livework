@@ -3,13 +3,16 @@
 A small Android app that opens the LiveWork web client full screen in a WebView.
 It uses the same pairing, controls, video, and input as Chrome.
 
+- Opens on a QR scanner: scan the QR code in the Unity LiveWork window to connect.
+  **Enter address** is the fallback, and **Reconnect** opens the last server.
 - Full screen without browser bars; swipe from the edge to show system bars.
 - Keeps the screen on while the app is open.
 - Remembers the last server address.
-- Opens `livework://open?url=<encoded address>` links, which the Unity LiveWork
-  window shows as a QR code when the QR option is set to **Android app**.
+- Accepts both QR options in the Unity LiveWork window: **Browser** (a plain
+  address) and **Android app** (a `livework://open?url=<encoded address>` link,
+  which also opens the app from the phone's camera app).
 - Allows plain HTTP, because LiveWork runs on a private Tailscale network.
-- Back leaves fullscreen first, then returns to the address screen.
+- Back leaves fullscreen first, then returns to the scan screen.
 
 Requires Android 8.0 (API 26) or newer, and Tailscale on the phone.
 

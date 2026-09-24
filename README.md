@@ -1,281 +1,242 @@
-# Unity LiveWork
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/banner-dark.png">
+    <img alt="LiveWork" src="docs/brand/banner-light.png" width="720">
+  </picture>
+</p>
 
-Play your Unity Editor's Game View from an Android or desktop browser.
+<p align="center">
+  <a href="https://github.com/koezyrs/unity-livework/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/koezyrs/unity-livework?include_prereleases&label=release&color=ff4545"></a>
+  <img alt="Unity 6" src="https://img.shields.io/badge/Unity-6000.2%20%7C%206000.3-222?logo=unity">
+  <img alt="Windows host" src="https://img.shields.io/badge/host-Windows-222?logo=windows">
+  <a href="https://github.com/koezyrs/unity-livework/releases/latest/download/LiveWork.apk"><img alt="Android app" src="https://img.shields.io/badge/Android-download%20APK-222?logo=android"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-222"></a>
+</p>
 
-LiveWork streams video and audio over WebRTC and sends touch, mouse, and keyboard
-input back to your game. A compact, single-row web toolbar controls Play Mode,
-pause, frame stepping, resolution, sound, and fullscreen.
+<p align="center">
+  <b>English</b> · <a href="README.vi.md">Tiếng Việt</a>
+</p>
 
-**Development preview · Windows host · Unity 6 · Tailscale or localhost**
+**LiveWork** streams the Unity Editor Game View to your phone or PC browser, and
+you play it live. Touch, mouse, and keyboard input go straight back to your game.
+No build, no install on the device, no changes to your game scripts.
+
+Change a script, press Play, and try it on a real phone in seconds.
+
+<p align="center">
+  <img alt="Pairing screen" src="docs/images/web-pairing.png" width="260">
+  &nbsp;&nbsp;
+  <img alt="Settings screen" src="docs/images/web-settings.png" width="260">
+</p>
 
 ## Features
 
-- **One Git URL installation.** Includes the patched Render Streaming runtime and
-  web service. Unity resolves the remaining package dependencies automatically.
-- **Code or QR pairing.** Enter the six-digit code, or scan the Editor's QR code
-  with your phone's camera to open and pair the browser.
-- **Unity-style controls.** Play/Stop, Pause/Resume, and Step.
-- **Game-first web UI.** One compact toolbar above the Game View, with a black and
-  silver theme. The Editor window uses standard Unity controls.
-- **Real Game View resolution.** Choose a preset or enter custom dimensions.
-- **Video, audio, and input.** Stream the game without changing gameplay scripts.
-- **Session recovery.** Reconnect after browser reload, Stop/Play, scene changes,
-  and Unity script/domain reloads.
-- **Per-project service.** Each Editor project uses its own configuration and port.
+- **Play the Editor from your phone.** Video and audio over WebRTC. Multi-touch,
+  mouse, and keyboard input go to the game.
+- **Android app.** Scan the QR code and play in full screen. The app keeps the
+  screen on and stays clear of the camera cutout. A browser works too.
+- **Unity-style controls.** Play/Stop, Pause/Resume, and Step from the phone.
+- **Real Game View resolution.** Pick a preset or type a custom size.
+- **Stream quality presets.** Smooth for mobile data, Balanced, or Sharp.
+- **Low latency.** H.264 hardware encoding, no video buffer delay, and input
+  sent at most once per frame.
+- **Quick pairing.** Scan the QR code, or type the six-digit code.
+- **Session recovery.** Reconnects after a page reload, Play/Stop, scene changes,
+  and script reloads.
+- **One Git URL install.** The patched Render Streaming runtime and the web
+  service are included.
 
 ## Requirements
 
-| Component | Supported configuration |
+| Component | Supported |
 | --- | --- |
 | Host OS | Windows |
-| Unity Editor | **6000.3.11f1** or **6000.2.7f2**; other versions are rejected by this preview |
-| Node.js | **22 or newer**, including npm, available on PATH |
+| Unity Editor | **6000.3.11f1** or **6000.2.7f2** |
+| Node.js | **22 or newer**, with npm on PATH |
 | Git | Installed and available to Unity Package Manager |
-| Network | Tailscale on both devices, or localhost on the host |
-| Browser | Chrome on Android; Chrome or Edge on desktop |
-| Audio | An active AudioListener in the game |
-| Keyboard/mouse input | Active Input Handling set to **Input System** or **Both** |
+| Network | [Tailscale](https://tailscale.com) on both devices, or localhost on the host |
+| Phone | Android 8.0 or newer (app or Chrome), or Chrome/Edge on desktop |
+| Audio | An active AudioListener in the scene |
+| Keyboard/mouse | Active Input Handling set to **Input System** or **Both** |
 
-Node.js, Git, and Tailscale are host applications, not Unity packages. Install them
-before starting LiveWork. Restart Unity after installing Node.js so it receives
-the updated PATH.
-
-## Installation
-
-### Unity Package Manager — one Git URL
-
-1. Open **Window → Package Manager**.
-2. Select **+ → Install package from git URL**.
-3. Paste:
-
-   ```text
-   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity
-   ```
-
-4. Wait for Unity to resolve dependencies and finish compiling.
-5. Open **Window → LiveWork**.
-
-**No second Git URL or separate Render Streaming installation is needed.**
-The package contains the patched Render Streaming runtime and web service.
-Unity installs WebRTC, Input System, uGUI, and the required Unity modules.
-
-Append `#<commit-sha>` to pin a revision. New changes become available through the
-GitHub URL after they are committed and pushed.
-
-### Upgrading from the original two-package setup
-
-Remove the separate `com.unity.renderstreaming` entry from the project's
-`Packages/manifest.json` before installing this version. LiveWork now contains
-that runtime; installing both creates duplicate assemblies.
-
-If your project uses Render Streaming independently, review the migration before
-removing it. This preview does not support a second standalone Render Streaming
-package alongside the bundled runtime.
-
-### Local development installation
-
-Clone this repository, then run from its root:
-
-```powershell
-.\scripts\setup.ps1
-```
-
-Open the included `sample` project, or use **Install package from disk** and select
-`packages/com.livework.unity/package.json` in an existing project. Do not install
-the package under `vendor` separately.
+Install Node.js, Git, and Tailscale before you start LiveWork. Restart Unity
+after you install Node.js so Unity sees the new PATH.
 
 ## Quick start
 
-1. Open your game scene in Unity.
-2. Open **Window → LiveWork** and click **Start server**.
-3. On the first start, LiveWork prepares its Node dependencies. An npm network
-   connection is required.
-4. Once the status reads **Server running**, open the displayed address on your
-   browser and enter the pairing code. Alternatively, scan the QR code with your
-   phone's camera to open and pair automatically.
-5. Press **Play** in the web toolbar, then click or touch the Game View.
+### 1. Install the Unity package
 
-For a remote device, both devices must be on the same Tailscale network. A
-`127.0.0.1` address works only on the host computer; the Editor displays a reminder
-when no Tailscale address is available.
+1. Open **Window → Package Manager**.
+2. Select **+ → Install package from git URL**.
+3. Paste this URL:
 
-Only one browser tab can control an Editor session at a time.
+   ```text
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v0.2.0
+   ```
 
-## Controls
+4. Wait for Unity to install the dependencies and compile.
 
-### Unity Editor window
+Remove `#v0.2.0` to always get the latest code from `main`.
 
-The window displays the server status, address, pairing code, and QR code.
+### 2. Install the Android app (optional)
+
+1. On the phone, open the
+   [latest release](https://github.com/koezyrs/unity-livework/releases/latest)
+   and download **LiveWork.apk**.
+2. Open the file. Allow your browser to install unknown apps when Android asks.
+3. Tap **Install**.
+
+No USB cable or developer mode is needed. You can also use Chrome instead of the app.
+
+### 3. Connect
+
+1. Open your scene, then open **Window → LiveWork** and click **Start server**.
+   The first start downloads the service dependencies with npm.
+2. Set **Connection Mode** to **Android** for the app, or **Web** for a browser.
+3. Scan the QR code with the phone.
+4. Press **Play** in the toolbar, then touch the game.
+
+For a phone, both devices must be on the same Tailscale network. A `127.0.0.1`
+address works only on the host computer.
+
+## Usage
+
+### Unity LiveWork window
 
 | Control | Action |
 | --- | --- |
-| Copy (next to Address) | Copy the browser address without the pairing code |
-| Open (next to Address) | Open the address in the host's browser |
-| Connection Mode | **Web** makes the QR code open the browser; **Android** makes it open the LiveWork app |
-| Start server (at the bottom) | Prepare and start the project's LiveWork service |
-| End server (at the bottom) | Disconnect LiveWork and shut down that service; leave Unity's Play Mode unchanged |
+| Address · Copy | Copy the address |
+| Address · Open | Open the address in the host's browser |
+| Pairing code | The six-digit code to type on the device |
+| Connection Mode | **Web**: the QR code opens the browser. **Android**: it opens the LiveWork app |
+| Start server / End server | Start or stop the LiveWork service for this project |
 
-A new server session generates a new pairing code. Ending a session restores the
-previous Game View selection and run-in-background setting.
+Each new server session creates a new pairing code. Ending a session restores
+the previous Game View and run-in-background settings. Play Mode is not changed.
 
-### Browser toolbar
+### Toolbar on the device
 
 | Control | Action |
 | --- | --- |
-| Play / Stop | Enter or exit Unity Play Mode |
-| Pause / Resume | Pause gameplay or continue running |
-| Step | Advance one Editor frame while paused |
-| Sound | Toggle audio; playback starts muted |
-| Fullscreen | Show only the game and a small exit button |
-| Menu (☰) | Open **Settings**: game resolution and stream quality |
-| Right-click the game | Open **Lock pointer** on supported desktop browsers |
+| Play / Stop | Enter or exit Play Mode |
+| Pause / Resume | Pause or continue the game |
+| Step | Advance one frame while paused |
+| Sound | Turn audio on or off (starts muted) |
+| Fullscreen | Show only the game |
+| ☰ Settings | Game resolution and stream quality |
+| Right-click the game | Lock the pointer (desktop browsers) |
 
-In **Settings**, pick a game resolution from the list and it applies immediately.
-Choose **Custom size…** to type a width and height, then press Apply. For stream
-quality, pick **Smooth** on mobile data, **Balanced** for most networks, and
-**Sharp** on fast Wi-Fi. Press Escape or × to close Settings.
+**Game resolution** changes the real Game View, not only the picture on the
+device. Each side must be even and between 240 and 1920, with at most 2,073,600
+pixels in total.
 
-All controls share one row. On narrow screens, secondary branding and status text
-are hidden to preserve touch targets and game space. The game retains its aspect
-ratio; black margins are not new touch targets.
+**Stream quality:**
 
-Resolution changes affect the actual Game View, not just its browser display.
-Each dimension must be even and between **240 and 1920**, with at most
-**2,073,600 pixels** in total.
+| Preset | Max size | Max bitrate | Best for |
+| --- | --- | --- | --- |
+| Smooth | 960 px | 2.5 Mbps | Mobile data |
+| Balanced (default) | 1280 px | 4 Mbps | Most networks |
+| Sharp | 1280 px | 8 Mbps | Fast Wi-Fi |
 
-## Input support
+### Input support
 
-| Unity input backend | Supported input |
+| Active Input Handling | Supported input |
 | --- | --- |
-| Input System | Multi-touch, mouse, scrolling, keyboard, pointer lock |
-| Legacy Input Manager | Touch only |
-| Both | Input System input plus Legacy touch |
+| Input System | Multi-touch, mouse, scroll, keyboard, pointer lock |
+| Input Manager (Old) | Touch only |
+| Both | Input System input and legacy touch |
 
-Legacy keyboard, mouse, and axes are not supported. LiveWork does not change
-Active Input Handling, action maps, scene input modules, or gameplay scripts.
-Custom device filters and action-map bindings may need project-specific testing.
-
-## Networking and service lifecycle
-
-- Editor-started services use an available port per project. Copy the current
-  address rather than assuming port 8080.
-- Git-installed service files run from `Library/LiveWork/service-<hash>`.
-  Dependencies and runtime data stay outside the immutable UPM package cache.
-- Host configuration lives in `Library/LiveWork/host.json`. It contains local
-  credentials and should not be committed.
-- HTTP and WebSocket access is restricted to localhost and Tailscale addresses.
-  Pairing is required before browser control or signaling.
-- WebRTC sends media and input directly between devices. No public STUN or TURN
-  service is configured.
-- Tailscale ACLs and the firewall must permit the service's TCP port and WebRTC
-  UDP traffic. LiveWork does not modify firewall or network settings.
-
-This preview is intended for private Tailscale or local use, not public internet
-hosting. QR pairing uses the phone's camera; the web page does not request camera
-access.
-
-For service development, `npm start` in `service` runs a standalone service on
-port 8080. `LIVEWORK_PORT` and `LIVEWORK_BIND` override its port and bind address.
-`LIVEWORK_STATE_DIRECTORY` overrides its configuration directory; the manual
-default is `service/.local`. Editor sessions use their own configuration and do
-not attach to an unrelated standalone server.
-
-## Android app
-
-The `android` folder contains a small Android app that shows the same web client
-full screen, without the browser's address bar, and keeps the screen on. The
-phone still needs Tailscale to reach the host. Build and install it as described in
-[android/README.md](android/README.md). In the Unity **LiveWork** window, set
-**Connection Mode** to **Android** so the phone's camera opens the app directly.
-The app's own scanner reads both QR types.
+LiveWork does not change your input settings, action maps, input modules, or
+game scripts.
 
 ## Performance tips
 
-- **Check the Tailscale path.** Run `tailscale ping <phone-name>` on the host. If it
-  reports `via DERP`, traffic goes through a relay server and adds a lot of delay.
-  A `direct` connection is much faster. Mobile networks with strict NAT often
-  force DERP; try another network or allow UDP port 41641 on the host firewall.
-- **Use Smooth quality on mobile data.** A lower bitrate avoids packet loss, which
-  shows up as stutter and late touches.
-- **Stop Unity from slowing down in the background.** In **Edit → Preferences →
-  General**, set **Interaction Mode** to **No Throttling**.
-- **Use an NVIDIA GPU when possible.** LiveWork prefers H264, which Unity encodes
-  on NVIDIA GPUs. Other hosts fall back to a CPU encoder, which is slower.
+- **Check the Tailscale path.** Run `tailscale ping <phone-name>` on the host.
+  `via DERP` means traffic goes through a relay and adds delay. A `direct`
+  connection is much faster. On strict mobile networks, allow UDP port 41641 in
+  the host firewall or try another network.
+- **Use Smooth on mobile data.** A lower bitrate avoids packet loss, which shows
+  up as stutter and late touches.
+- **Stop background throttling.** In **Edit → Preferences → General**, set
+  **Interaction Mode** to **No Throttling**.
+- **Use an NVIDIA GPU if you can.** Unity encodes H.264 on NVIDIA GPUs. Other
+  hosts use a slower CPU encoder.
+
+## Network and security
+
+- Each project runs its own service on a free port. Copy the address from the
+  LiveWork window.
+- The service accepts only localhost and Tailscale addresses, and it requires
+  pairing before any control or video.
+- Video and input go directly between the two devices. No public STUN or TURN
+  server is used.
+- The Android app and the web client use plain HTTP inside your private
+  Tailscale network. Do not expose the service to the public internet.
+- `Library/LiveWork/host.json` contains local credentials. Do not commit it.
 
 ## Troubleshooting
 
-| Symptom | What to check |
+| Problem | What to check |
 | --- | --- |
-| Start server fails | Install Node.js 22+ with npm, restart Unity, and check the inline error |
-| First-time preparation fails | Check npm connectivity and registry/proxy settings, then retry |
-| Phone cannot open the URL | Connect both devices to Tailscale; do not use localhost on the phone |
-| Another browser is controlling Unity | Close the existing controlling tab, then connect again |
-| QR or pairing code is rejected | Use the current code; restarting the server changes it |
-| Duplicate Render Streaming assembly | Remove the old standalone `com.unity.renderstreaming` dependency |
-| Game ignores keyboard/mouse | Use Input System or Both and check action/device bindings |
-| No audio | Check the scene's AudioListener and tap the sound icon |
-| Play is blocked | Fix compile errors in Unity's Console |
-| Pointer lock/fullscreen unavailable | Use a supported browser; some features require HTTPS or a user gesture |
-| Video is waiting or reconnecting | Keep Unity and Game View active; check the network and Unity Console |
+| Start server fails | Install Node.js 22+ with npm, restart Unity, and read the error in the window |
+| First start fails | Check the npm connection and proxy settings, then try again |
+| The phone cannot open the address | Connect both devices to Tailscale. Do not use `127.0.0.1` on the phone |
+| "Another browser may be controlling Unity" | Close the other tab or app, then connect again |
+| The pairing code is rejected | Use the current code. Restarting the server changes it |
+| Duplicate Render Streaming assembly | Remove the separate `com.unity.renderstreaming` package |
+| The game ignores keyboard or mouse | Use Input System or Both, and check your bindings |
+| No sound | Check the AudioListener, then tap the sound button |
+| Play does not start | Fix the compile errors in the Unity Console |
+| Video stutters or lags | See [Performance tips](#performance-tips) |
+| The app does not install over an older version | Uninstall the older app first. It was signed with a different key |
 
 ## Limitations
 
-- Supported Editor versions are deliberately pinned in this preview.
-- Streaming targets **30 FPS**. The **Stream quality** setting sets the stream cap:
-  Smooth (960 pixels on the longest edge, 2.5 Mbps), Balanced (1280 pixels,
-  4 Mbps, default) or Sharp (1280 pixels, 8 Mbps). A higher Game View resolution
-  does not remove that cap.
-- Step advances one Editor frame; Unity determines the FixedUpdate calls within it.
-- Keep the host awake and Game View open. Sleep, locked desktops, minimized Unity,
-  and graphics-free batch-mode streaming are not supported.
-- iOS, gamepads, sensors, IME/virtual keyboards, public TURN hosting, and multiple
-  controllers for one session are outside this preview's scope.
-- Browser touch emulation is not a physical Android hardware test.
-- Gameplay runs on the host. This does not emulate mobile-device performance,
-  native plugins, or Android/iOS build behavior.
+- This is a preview. Only the Unity versions listed above are supported.
+- The stream runs at up to 30 FPS.
+- The game runs on the host. LiveWork does not test device performance, native
+  plugins, or Android build behavior.
+- Keep the host awake and Unity visible. Sleep, a locked screen, and a minimized
+  Editor stop the stream.
+- Not supported yet: macOS and Linux hosts, iOS app, gamepads, sensors, on-screen
+  keyboard input, and more than one controller per session.
 
-## Development and testing
+## Development
 
 ```powershell
 .\scripts\setup.ps1
 cd service
-npm test
-npm run test:ui
-npm run check:bundle
+npm test              # service tests
+npm run test:ui       # web UI tests with Playwright and Microsoft Edge
+npm run check:bundle  # checks the committed package bundles
+npm run build         # regenerates Service~ and the bundled runtime
+npm run brand         # regenerates all logo files
 ```
 
-- `npm test` builds the service and tests pairing, authorization, control,
-  shutdown, and coordinate mapping.
-- `npm run test:ui` uses Playwright and Microsoft Edge to check the web flow and
-  responsive layouts against a simulated Editor.
-- `npm run check:bundle` checks the committed Git-installable bundles against
-  their source files.
-- `npm run build` regenerates `Service~` and the bundled Render Streaming runtime.
-  Commit those outputs together with changes to their source.
+To build the Android app, see [android/README.md](android/README.md).
+For live Unity tests, see [docs/TESTING.md](docs/TESTING.md).
 
-See [Testing](docs/TESTING.md) for live Unity/browser integration tests and
-[Verification](docs/VERIFICATION.md) for recorded results and remaining checks.
-
-| Directory | Purpose |
+| Folder | Purpose |
 | --- | --- |
-| `packages/com.livework.unity` | Git-installable Unity package |
-| `service` | Canonical Node service, browser UI, bundling scripts, and tests |
-| `android` | Android app that wraps the web client |
-| `sample` | Unity demo and integration fixtures |
-| `vendor` | Pinned Render Streaming source and documented patches |
-| `docs` | Testing and verification notes |
+| `packages/com.livework.unity` | The Unity package |
+| `service` | Node service, web client, bundling scripts, and tests |
+| `android` | Android app |
+| `sample` | Unity demo project and test fixtures |
+| `vendor` | Pinned Render Streaming source and patches |
+| `docs` | Protocol, testing notes, and brand files |
 
-When reporting an issue, include the Unity version, browser, input backend,
-reproduction steps, and relevant redacted logs. Do not include pairing codes,
-host tokens, or generated host configuration files.
+When you report a bug, include the Unity version, the device and browser or app
+version, the input backend, the steps to reproduce, and logs. Remove pairing
+codes and tokens from the logs.
 
-## Third-party licenses
+## License
 
-Bundled Render Streaming retains the **Unity Companion License** and its upstream
-notices. The QR encoder is licensed under **MIT**. See
-[Render Streaming provenance](vendor/UPSTREAM.md),
-[Render Streaming license](packages/com.livework.unity/ThirdParty/RenderStreaming/LICENSE.md),
-and [QR encoder license](packages/com.livework.unity/Editor/ThirdParty/QrCodeGenerator/LICENSE.txt).
+LiveWork is released under the [MIT License](LICENSE).
 
-This repository currently does not declare a separate license for LiveWork-authored
-code. Third-party licenses apply to their respective components.
+The bundled Unity Render Streaming code uses the
+[Unity Companion License](packages/com.livework.unity/ThirdParty/RenderStreaming/LICENSE.md).
+See [Third Party Notices](packages/com.livework.unity/Third%20Party%20Notices.md)
+for all third-party components.
+
+Unity is a trademark of Unity Technologies. LiveWork is not affiliated with or
+endorsed by Unity Technologies.

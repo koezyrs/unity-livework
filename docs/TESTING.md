@@ -5,10 +5,13 @@
 Run `npm test` from `service`. Uses Node's test runner and real local WebSockets;
 no Unity installation is needed. Covers pairing failures, Unicode input, origin
 checks, exclusive control, validation, forwarding/results, disconnect reset and
-portrait/landscape letterboxing, plus host-authorized shutdown and port reuse.
+portrait/landscape letterboxing, plus host-authorized shutdown and port reuse,
+scene list and log forwarding, log replay and limits, host token removal from
+logs, and scene command validation.
 
 Run `npm run test:ui` for browser checks with a simulated Editor. These cover code
 and QR pairing, exclusive control, transport states, custom resolution validation,
+the scene picker, the console (filters, search, copy, safe text, error badge),
 mute, fullscreen and layouts down to 320 px. Microsoft Edge is required.
 Run `npm run check:bundle` before committing to verify that the Git package's web
 service and patched Render Streaming runtime match their canonical sources.

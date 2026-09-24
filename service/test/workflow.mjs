@@ -40,7 +40,7 @@ try {
   await page.locator('#step').click(); const stepped = await until(s => s.frames > paused.frames); assert.equal(stepped.frames, paused.frames + 1); assert.equal(stepped.paused, true); record('Pause and exactly one frame', { before: paused.frames, after: stepped.frames });
   await page.screenshot({ path: '../.artifacts/livework-paused.png' });
   await page.locator('#pause').click(); await status('playing');
-  await page.locator('#preset').selectOption('720x1280'); await until(s => s.width === 720 && s.height === 1280); await videoReady();
+  await page.locator('#menu').click(); await page.getByRole('tab', { name: 'Settings' }).click(); await page.locator('#preset').selectOption('720x1280'); await page.locator('#closeSettings').click(); await until(s => s.width === 720 && s.height === 1280); await videoReady();
   await page.waitForFunction(() => document.getElementById('video').videoHeight > document.getElementById('video').videoWidth); record('portrait resolution and video reconnect');
   await page.setViewportSize({ width: 412, height: 915 }); await page.screenshot({ path: '../.artifacts/livework-mobile.png' });
   await page.reload(); await status('playing'); await videoReady(); record('browser reload and authenticated reconnect');

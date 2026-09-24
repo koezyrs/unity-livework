@@ -23,7 +23,7 @@ try {
   await page.locator('#play').click(); await status('playing'); await videoReady();
   await page.locator('#pause').click(); await status('paused'); await sleep(300); const frames = (await snapshot()).frames;
   await page.reload(); await status('paused'); await videoReady(); assert.equal((await snapshot()).frames, frames); record('reconnect while paused without advancing gameplay');
-  await page.locator('#preset').selectOption('1280x720'); await until(s => s.width === 1280 && s.height === 720); await videoReady();
+  await page.locator('#menu').click(); await page.getByRole('tab', { name: 'Settings' }).click(); await page.locator('#preset').selectOption('1280x720'); await page.locator('#closeSettings').click(); await until(s => s.width === 1280 && s.height === 720); await videoReady();
   assert.equal((await snapshot()).frames, frames); record('resize while paused without advancing gameplay');
   await page.locator('#pause').click(); await status('playing'); await videoReady();
   await page.waitForFunction(() => document.getElementById('video').videoWidth === 1280 && document.getElementById('video').videoHeight === 720);

@@ -37,7 +37,7 @@
       <div class="view-actions">
         <button id="mute" class="icon-button" aria-pressed="true" aria-label="Unmute" title="Unmute"></button>
         <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Enter fullscreen"></button>
-        <button id="menu" class="icon-button" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings"></button>
+        <button id="menu" class="icon-button" aria-label="Menu" title="Menu" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings"></button>
       </div>
     </header>
     <main id="stage" tabindex="0" aria-label="Interactive Unity Game View">
@@ -50,9 +50,36 @@
     <div id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
       <div class="sheet" tabindex="-1">
         <div class="sheet-head">
-          <h2 id="settingsTitle">Settings</h2>
-          <button id="closeSettings" class="icon-button" aria-label="Close settings" title="Close settings"></button>
+          <h2 id="settingsTitle" class="visually-hidden">Menu</h2>
+          <div class="tabs" role="tablist" aria-label="Menu sections">
+            <button id="tabScenes" class="tab" role="tab" aria-controls="scenesPanel" aria-selected="false" tabindex="-1" data-panel="scenes">Scenes</button>
+            <button id="tabConsole" class="tab" role="tab" aria-controls="consolePanel" aria-selected="false" tabindex="-1" data-panel="console">Console</button>
+            <button id="tabSettings" class="tab" role="tab" aria-controls="settingsPanel" aria-selected="false" tabindex="-1" data-panel="settings">Settings</button>
+          </div>
+          <button id="closeSettings" class="icon-button" aria-label="Close menu" title="Close menu"></button>
         </div>
+        <section id="scenesPanel" class="panel" role="tabpanel" aria-labelledby="tabScenes" hidden>
+          <input id="sceneSearch" type="search" placeholder="Search scenes" aria-label="Search scenes" autocomplete="off" spellcheck="false">
+          <div id="sceneList" class="list"></div>
+          <p id="sceneEmpty" class="empty">Waiting for the scene list from Unity…</p>
+        </section>
+        <section id="consolePanel" class="panel" role="tabpanel" aria-labelledby="tabConsole" hidden>
+          <div class="console-bar">
+            <div class="levels" role="group" aria-label="Log levels">
+              <button class="level" data-level="info" aria-pressed="true"><span class="mark"></span>Info<span class="count">0</span></button>
+              <button class="level" data-level="warning" aria-pressed="true"><span class="mark"></span>Warning<span class="count">0</span></button>
+              <button class="level" data-level="error" aria-pressed="true"><span class="mark"></span>Error<span class="count">0</span></button>
+            </div>
+            <div class="console-tools">
+              <input id="logSearch" type="search" placeholder="Search logs" aria-label="Search logs" autocomplete="off" spellcheck="false">
+              <button id="clearLogs">Clear</button>
+            </div>
+          </div>
+          <div id="logList" class="list"></div>
+          <p id="logEmpty" class="empty">No logs yet.</p>
+          <button id="jumpLatest" hidden>Jump to latest</button>
+        </section>
+        <section id="settingsPanel" class="panel" role="tabpanel" aria-labelledby="tabSettings" hidden>
         <fieldset id="presets">
           <legend>Game resolution</legend>
           <select id="preset" aria-label="Game resolution">
@@ -78,6 +105,7 @@
             <label class="choice wide"><input type="radio" name="quality" value="sharp"><span>Sharp<small>Up to 1280 px, 8 Mbps. Best on fast Wi-Fi.</small></span></label>
           </div>
         </fieldset>
+        </section>
       </div>
     </div>
   </div>

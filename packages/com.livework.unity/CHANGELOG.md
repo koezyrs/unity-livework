@@ -5,6 +5,24 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Scenes** tab in the web menu. Search every scene in the project and play it.
+  If the game is running, LiveWork asks, then restarts Play Mode in the chosen
+  scene. The scene is not opened in the Editor, and your Play Mode start scene
+  is restored when Play Mode ends.
+- **Console** tab in the web menu. It shows Editor and game logs, including
+  compile errors, with stack traces. You can filter Info, Warning, and Error
+  logs, search, and copy one log. A red dot on the menu button means a new
+  error arrived. The service keeps the last 500 logs for reconnects.
+
+### Changed
+
+- The web menu button is now named **Menu** and has three tabs: Scenes,
+  Console, and Settings.
+
 ## [1.0.0] - 2026-09-25
 
 ### Added
@@ -74,5 +92,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - One Git URL installation with the patched Render Streaming runtime and the web
   service included.
 
+[Unreleased]: https://github.com/koezyrs/unity-livework/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/koezyrs/unity-livework/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/koezyrs/unity-livework/releases/tag/v0.2.0

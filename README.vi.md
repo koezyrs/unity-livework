@@ -38,6 +38,10 @@ Sửa script, bấm Play, và thử ngay trên điện thoại thật chỉ sau 
 - **Nút điều khiển giống Unity.** Play/Stop, Pause/Resume và Step ngay trên điện thoại.
 - **Đổi độ phân giải thật của Game View.** Chọn sẵn hoặc tự nhập kích thước.
 - **Chọn chất lượng stream.** Smooth cho 4G, Balanced hoặc Sharp.
+- **Chọn scene để chạy.** Tìm mọi scene trong project và chạy nó. Scene đang mở
+  trong Editor không bị đổi.
+- **Console.** Xem log của Unity kèm stack trace, lọc theo Info, Warning hoặc
+  Error, và copy một log.
 - **Độ trễ thấp.** Mã hoá H.264 bằng GPU, không đệm video, và gửi thao tác tối
   đa một lần mỗi khung hình.
 - **Kết nối nhanh.** Quét mã QR hoặc nhập mã 6 số.
@@ -136,8 +140,21 @@ Mỗi lần bật server sẽ có mã kết nối mới. Khi tắt server, LiveW
 | Step | Chạy thêm một khung hình khi đang tạm dừng |
 | Sound | Bật hoặc tắt tiếng (mặc định tắt) |
 | Fullscreen | Chỉ hiện game |
-| ☰ Settings | Độ phân giải game và chất lượng stream |
+| ☰ Menu | Scenes, Console và Settings (độ phân giải và chất lượng stream) |
 | Chuột phải vào game | Khoá con trỏ chuột (trình duyệt máy tính) |
+
+**Scenes** liệt kê mọi scene trong project: đầu tiên là scene trong Build
+Settings, sau đó là `Assets`, rồi đến `Packages`. Gõ vào ô tìm kiếm để lọc theo
+tên hoặc đường dẫn. Chạm vào một scene để chạy nó. Nếu game đang chạy, LiveWork
+sẽ hỏi trước, rồi dừng và chạy lại với scene mới. LiveWork không mở scene đó
+trong Editor. Nó dùng Play Mode start scene và trả lại cài đặt của bạn khi Play
+Mode kết thúc.
+
+**Console** hiện log của Editor và game, kể cả lỗi compile. Chạm vào một log để
+xem toàn bộ nội dung, stack trace, và copy. Các nút Info, Warning, Error dùng để
+hiện hoặc ẩn từng loại log. **Clear** chỉ xoá danh sách trên thiết bị này.
+Service giữ 500 log gần nhất, nên tải lại trang vẫn thấy log. Chấm đỏ trên ☰
+nghĩa là có lỗi mới.
 
 **Game resolution** đổi kích thước thật của Game View, không chỉ đổi hình trên
 thiết bị. Mỗi cạnh phải là số chẵn, từ 240 đến 1920, và tổng số điểm ảnh không

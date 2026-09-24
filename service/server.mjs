@@ -12,6 +12,12 @@ const signaling = require('./generated/signaling.cjs');
 const root = path.dirname(fileURLToPath(import.meta.url));
 const commands = new Set(['Play', 'Stop', 'Pause', 'Resume', 'Step', 'SetResolution', 'SetStreamQuality']);
 const qualities = new Set(['smooth', 'balanced', 'sharp']);
+const levels = new Set(['info', 'warning', 'error']);
+const maxLogs = 500, maxScenes = 2000;
+const text = (value, max) => typeof value === 'string' ? value.slice(0, max) : '';
+const scenePath = value => typeof value === 'string' && value.length <= 512 && /\.unity$/i.test(value);
+// Restarting in another scene exits and enters Play Mode, which can reload scripts twice.
+const commandTimeout = msg => msg.command === 'Play' && msg.scene !== undefined ? 60000 : 20000;
 const loopback = address => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address);
 export const tailscale = ['100.64.0.0/10', 'fd7a:115c:a1e0::/48'];
 /** Returns a check that accepts loopback and any address inside the given CIDR ranges. */
@@ -42,6 +48,9 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
   const editorOffline = 'Unity Editor is not connected. Open Window > LiveWork in Unity and start the server.';
   let state = { v: 1, type: 'state', state: 'offline', message: 'Waiting for Unity Editor…', width: 0, height: 0 };
   const pending = new Map(), attempts = new Map();
+  let scenes = { v: 1, type: 'scenes', scenes: [], truncated: false }, scenePaths = new Set(), logs = [], logSeq = 0;
+  // Unity logs the signaling URL, which holds the host token; the browser must never see it.
+  const logText = (value, max) => text(typeof value === 'string' ? value.replaceAll(hostToken, '[host token]') : '', max);
   let closing;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
   signaling.reset('public');
@@ -121,13 +130,24 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         return;
       }
       if (local) { editor = ws; clearTimeout(editorLostTimer); send(ws, { v: 1, type: 'hello' }); }
-      else { controller = ws; send(ws, state); }
+      else { controller = ws; send(ws, state); send(ws, scenes); send(ws, { v: 1, type: 'logs', entries: logs, replay: true }); }
       ws.on('message', bytes => {
         let msg; try { msg = JSON.parse(bytes.toString()); } catch { return ws.close(1008, 'Invalid JSON'); }
         if (msg.v !== 1) return ws.close(1008, 'Unsupported protocol');
         if (local) {
           if (msg.type === 'state') { state = msg; send(controller, state); }
           if (msg.type === 'result' && pending.has(msg.id)) { const p = pending.get(msg.id); clearTimeout(p.timer); pending.delete(msg.id); send(p.ws, msg); }
+          if (msg.type === 'scenes' && Array.isArray(msg.scenes)) {
+            const list = msg.scenes.filter(s => scenePath(s?.path)).slice(0, maxScenes).map(s => ({ path: s.path, name: text(s.name, 256) || s.path, inBuild: s.inBuild === true }));
+            scenes = { v: 1, type: 'scenes', scenes: list, truncated: msg.truncated === true || list.length < msg.scenes.length };
+            scenePaths = new Set(list.map(s => s.path)); send(controller, scenes);
+          }
+          if (msg.type === 'logs' && Array.isArray(msg.entries)) {
+            // The service numbers entries itself, so the order stays valid when Unity restarts.
+            const entries = msg.entries.slice(0, 100).filter(e => levels.has(e?.level)).map(e => ({ seq: ++logSeq, level: e.level, message: logText(e.message, 4000), stack: logText(e.stack, 8000), time: Number.isFinite(e.time) ? e.time : Date.now() }));
+            logs.push(...entries); if (logs.length > maxLogs) logs.splice(0, logs.length - maxLogs);
+            if (entries.length) send(controller, { v: 1, type: 'logs', entries });
+          }
           return;
         }
         if (msg.type === 'resetInput') { send(editor, msg); return; }
@@ -136,8 +156,9 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         if (pending.size >= 16) return result(ws, msg.id, false, 'Too many commands are waiting. Try again in a moment.');
         if (msg.command === 'SetResolution' && (!Number.isInteger(msg.width) || !Number.isInteger(msg.height) || msg.width < 240 || msg.height < 240 || msg.width > 1920 || msg.height > 1920 || msg.width % 2 || msg.height % 2 || msg.width * msg.height > 2073600)) return result(ws, msg.id, false, 'Use even dimensions 240–1920, up to 2,073,600 pixels');
         if (msg.command === 'SetStreamQuality' && !qualities.has(msg.quality)) return result(ws, msg.id, false, 'Unknown stream quality');
+        if (msg.command === 'Play' && msg.scene !== undefined && (!scenePath(msg.scene) || !scenePaths.has(msg.scene))) return result(ws, msg.id, false, 'This scene is not in the project scene list.');
         if (!editor || editor.readyState !== WebSocket.OPEN) return result(ws, msg.id, false, 'Unity Editor is not connected. The command was not sent.');
-        pending.set(msg.id, { ws, timer: setTimeout(() => { pending.delete(msg.id); result(ws, msg.id, false, 'Unity did not confirm the command. Check the Editor before you try again.'); }, 20000) });
+        pending.set(msg.id, { ws, timer: setTimeout(() => { pending.delete(msg.id); result(ws, msg.id, false, 'Unity did not confirm the command. Check the Editor before you try again.'); }, commandTimeout(msg)) });
         send(editor, msg);
       });
       ws.on('close', () => {

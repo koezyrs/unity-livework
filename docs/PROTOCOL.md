@@ -24,6 +24,11 @@ have `v: 1`. JSON is capped at 128 KiB; data channel input is capped at 8 KiB.
 ```
 
 Commands: `Play`, `Stop`, `Pause`, `Resume`, `Step`, `SetResolution`, `SetStreamQuality`.
+`Play` takes an optional `scene`: a `.unity` asset path (at most 512 characters)
+from the latest scene list. The Editor plays that scene through the Play Mode
+start scene, without opening it, and restores the previous start scene when Play
+Mode ends. If the game is already playing, the Editor stops and plays again in
+that scene. The service waits 60 seconds for this command instead of 20.
 `SetStreamQuality` takes `quality`: `smooth` (960 px longest edge, 2.5 Mbps),
 `balanced` (default, 1280 px, 4 Mbps) or `sharp` (1280 px, 8 Mbps). All run at
 30 FPS. The Editor recreates the stream with the new settings, so `revision` changes.
@@ -33,10 +38,31 @@ transition may survive domain reload via SessionState; this resumes observation,
 not execution. The service times out after 20 seconds.
 
 State contains `state`, `message`, `width`, `height`, `revision`, `frame`,
-`inputMode`, `quality`, `unity`, `streaming`, `isPlaying`, `isPaused`. `state` is one of
+`inputMode`, `quality`, `scene`, `unity`, `streaming`, `isPlaying`, `isPaused`.
+`scene` is the path of the active scene in Play Mode, or empty. `state` is one of
 `offline`, `stopped`, `playing`, `paused`, `reloading`, `error`. Connection setup
 is displayed as `connecting` by the client. `revision` changes on every recreated
 stream; input from an old revision is discarded.
+
+## Scenes and logs
+
+The Editor sends these messages; the service checks and forwards them to the
+controller. When a controller connects, the service sends `state`, the latest
+`scenes`, and the stored logs with `replay: true`.
+
+```json
+{"v":1,"type":"scenes","truncated":false,"scenes":[{"path":"Assets/Main.unity","name":"Main","inBuild":true}]}
+{"v":1,"type":"logs","entries":[{"seq":1,"level":"error","message":"Boom","stack":"Game.Update ()","time":1760000000000}]}
+```
+
+- `scenes` lists up to 2000 scenes from `Assets` and `Packages`. `inBuild` marks
+  enabled Build Settings scenes. The Editor sends the list after `hello` and when
+  the project or Build Settings change.
+- `level` is `info`, `warning`, or `error` (errors, exceptions, and asserts).
+  The service numbers entries with `seq`, cuts `message` to 4000 and `stack` to
+  8000 characters, removes the host token, and keeps the last 500 entries.
+- The Editor sends at most 100 entries every 250 ms and 200 per second. Extra
+  entries are dropped and reported by one warning entry.
 
 ## Gameplay input
 

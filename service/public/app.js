@@ -1,6 +1,8 @@
 import { RenderStreaming } from './upstream/renderstreaming.js';
 import { LiveWorkSignaling } from './signaling.js';
 import { bindInput } from './input.js';
+import { bindScenes } from './scenes.js';
+import { bindConsole } from './console.js';
 const $ = id => document.getElementById(id);
 const video = $('video'), stage = $('stage'), canvas = $('lastFrame');
 let control, stream, channel, streamRevision = -1, state = {}, reconnectTimer, mediaTimer, generation = 0, requestId = 0;
@@ -33,8 +35,8 @@ buttonIcon('step', 'step', 'Next frame');
 buttonIcon('mute', 'muted', 'Unmute');
 buttonIcon('fullscreen', 'fullscreen', 'Enter fullscreen');
 buttonIcon('exitFullscreen', 'exit', 'Exit fullscreen');
-buttonIcon('menu', 'menu', 'Settings');
-buttonIcon('closeSettings', 'close', 'Close settings');
+buttonIcon('menu', 'menu', 'Menu');
+buttonIcon('closeSettings', 'close', 'Close menu');
 function showMessage(text) {
   clearTimeout(messageTimer);
   $('message').textContent = text; $('message').hidden = !text;
@@ -87,6 +89,8 @@ async function connectControl() {
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'state') updateState(msg);
+    else if (msg.type === 'scenes') scenes.update(msg);
+    else if (msg.type === 'logs') logs.add(msg);
     else if (msg.type === 'result') {
       const action = pending.get(msg.id); pending.delete(msg.id);
       if (action?.name === 'SetResolution') {
@@ -112,7 +116,8 @@ function command(name, args = {}) {
   if (control?.readyState !== WebSocket.OPEN || pending.size) return false;
   resetInput();
   const id = Date.now() + '-' + (++requestId);
-  pending.set(id, { time: Date.now(), name });
+  // Restarting in another scene can reload scripts twice; the service waits 60 seconds for it.
+  pending.set(id, { time: Date.now(), name, timeout: name === 'Play' && args.scene ? 62000 : 22000 });
   control.send(JSON.stringify({ v: 1, type: 'command', id, command: name, ...args }));
   renderControls(); return true;
 }
@@ -142,12 +147,44 @@ $('qualities').onchange = e => {
   if (e.target.name === 'quality' && !command('SetStreamQuality', { quality: e.target.value })) renderControls();
 };
 function choose(name, value) { for (const input of document.getElementsByName(name)) input.checked = input.value === value; }
+const scenes = bindScenes({ list: $('sceneList'), search: $('sceneSearch'), empty: $('sceneEmpty'),
+  play: scene => { const sent = command('Play', { scene }); if (sent) showSettings(false); return sent; } });
+const logs = bindConsole({ panel: $('consolePanel'), list: $('logList'), empty: $('logEmpty'), search: $('logSearch'), clear: $('clearLogs'), jump: $('jumpLatest'),
+  onError: () => { if ($('settings').hidden || currentTab !== 'console') alertErrors(true); } });
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+const stored = key => { try { return localStorage.getItem(key); } catch { return null; } };
+let currentTab = tabs.some(t => t.dataset.panel === stored('livework.tab')) ? stored('livework.tab') : 'scenes';
+function alertErrors(on) {
+  $('menu').classList.toggle('alert', on); $('tabConsole').classList.toggle('alert', on);
+  buttonIcon('menu', 'menu', on ? 'Menu, new errors' : 'Menu');
+}
+function selectTab(name, focus) {
+  currentTab = name;
+  try { localStorage.setItem('livework.tab', name); } catch {}
+  for (const tab of tabs) {
+    const selected = tab.dataset.panel === name;
+    tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
+    $(tab.getAttribute('aria-controls')).hidden = !selected;
+    if (selected && focus) tab.focus();
+  }
+  scenes.cancel();
+  if (name === 'console') { alertErrors(false); logs.shown(); }
+}
+for (const tab of tabs) tab.onclick = () => selectTab(tab.dataset.panel);
+$('settings').querySelector('[role="tablist"]').addEventListener('keydown', e => {
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const index = tabs.findIndex(t => t.dataset.panel === currentTab);
+  selectTab(tabs[(index + step + tabs.length) % tabs.length].dataset.panel, true);
+});
+selectTab(currentTab);
 function showSettings(show) {
   if (show === !$('settings').hidden) return;
   resetInput();
   $('settings').hidden = !show; $('menu').setAttribute('aria-expanded', String(show));
-  if (show) $('settings').querySelector('.sheet').focus();
-  else { $('dimensions').hidden = true; resolutionEdited = false; renderControls(); $('menu').focus(); }
+  if (show) { selectTab(currentTab); $('settings').querySelector('.sheet').focus(); }
+  else { $('dimensions').hidden = true; resolutionEdited = false; scenes.cancel(); renderControls(); $('menu').focus(); }
 }
 $('menu').onclick = () => showSettings(true);
 $('closeSettings').onclick = () => showSettings(false);
@@ -197,6 +234,7 @@ function renderControls() {
   if ($('preset').disabled !== !ready) $('preset').disabled = !ready;
   $('resize').disabled = !ready;
   if (state.quality) choose('quality', state.quality);
+  scenes.setState(state, ready);
   if (state.width) {
     // Touch the select only on real changes: Android redraws an open list on every DOM change.
     const size = state.width + 'x' + state.height, label = state.width + ' × ' + state.height + ' · Custom';
@@ -275,7 +313,7 @@ function retryMedia() {
 video.addEventListener('playing', () => { mediaReady = true; canvas.hidden = true; updateState(state); });
 setInterval(() => {
   sendInput({ type: 'heartbeat' });
-  for (const [id, action] of pending) if (Date.now() - action.time > 22000) {
+  for (const [id, action] of pending) if (Date.now() - action.time > action.timeout) {
     pending.delete(id); resolutionEdited = false; renderControls();
     showMessage('No confirmation received. Check the Editor before retrying.');
   }

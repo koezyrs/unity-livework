@@ -13,7 +13,7 @@ namespace LiveWork.Editor
         string qrPayload, localError;
         double copiedUntil;
         Vector2 scroll;
-        static readonly string[] QrTargets = { "Browser", "Android app" };
+        static readonly string[] QrTargets = { "Web", "Android" };
         static bool QrForApp { get => EditorPrefs.GetBool("LiveWork.QrForApp", false); set => EditorPrefs.SetBool("LiveWork.QrForApp", value); }
 
         [MenuItem("Window/LiveWork")]
@@ -48,12 +48,20 @@ namespace LiveWork.Editor
                 bool ready = LiveWorkHost.ServerReady;
                 string url = ready ? LiveWorkHost.BrowserUrl : null;
                 EditorGUILayout.LabelField("Address", EditorStyles.miniLabel);
-                EditorGUILayout.SelectableLabel(url ?? "Available when the server is ready", EditorStyles.textField, GUILayout.Height(22));
+                using (new EditorGUILayout.HorizontalScope()) {
+                    EditorGUILayout.SelectableLabel(url ?? "Available when the server is ready", EditorStyles.textField, GUILayout.Height(22), GUILayout.MinWidth(0), GUILayout.ExpandWidth(true));
+                    using (new EditorGUI.DisabledScope(!ready)) {
+                        if (GUILayout.Button(EditorApplication.timeSinceStartup < copiedUntil ? "Copied" : "Copy", GUILayout.Width(64), GUILayout.Height(22))) {
+                            EditorGUIUtility.systemCopyBuffer = url; copiedUntil = EditorApplication.timeSinceStartup + 2;
+                        }
+                        if (GUILayout.Button("Open", GUILayout.Width(52), GUILayout.Height(22))) Application.OpenURL(url);
+                    }
+                }
                 EditorGUILayout.LabelField("Pairing code", EditorStyles.miniLabel);
                 var codeStyle = new GUIStyle(EditorStyles.textField) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
                 EditorGUILayout.SelectableLabel(ready ? LiveWorkHost.Config.code : "— — — — — —", codeStyle, GUILayout.Height(36));
                 GUILayout.Space(12);
-                QrForApp = EditorGUILayout.Popup("QR code opens", QrForApp ? 1 : 0, QrTargets) == 1;
+                QrForApp = EditorGUILayout.Popup("Connection Mode:", QrForApp ? 1 : 0, QrTargets) == 1;
                 GUILayout.Space(6);
                 if (ready) {
                     var pairUrl = url + "/#pair=" + Uri.EscapeDataString(LiveWorkHost.Config.code);
@@ -64,6 +72,8 @@ namespace LiveWork.Editor
                 DrawQr(ready);
                 GUILayout.Space(6);
                 if (ready) EditorGUILayout.HelpBox(url.Contains("127.0.0.1") ? "Localhost: this address works on this computer only." : QrForApp ? "Scan with your phone’s camera to open the LiveWork app." : "Scan with your phone’s camera to connect.", MessageType.None);
+                var error = localError ?? LiveWorkHost.ServerError;
+                if (!string.IsNullOrEmpty(error)) EditorGUILayout.HelpBox(error, MessageType.Error);
                 GUILayout.Space(8);
                 bool canEnd = LiveWorkHost.Enabled || LiveWorkHost.Config != null;
                 using (new EditorGUI.DisabledScope(LiveWorkHost.IsStopping || LiveWorkService.IsPreparing || (LiveWorkHost.Enabled && LiveWorkHost.Config == null))) {
@@ -73,15 +83,6 @@ namespace LiveWork.Editor
                         else StartServer();
                     }
                 }
-                using (new EditorGUI.DisabledScope(!ready))
-                using (new EditorGUILayout.HorizontalScope()) {
-                    if (GUILayout.Button(EditorApplication.timeSinceStartup < copiedUntil ? "Copied" : "Copy URL", GUILayout.Height(24))) {
-                        EditorGUIUtility.systemCopyBuffer = url; copiedUntil = EditorApplication.timeSinceStartup + 2;
-                    }
-                    if (GUILayout.Button("Open browser", GUILayout.Height(24))) Application.OpenURL(url);
-                }
-                var error = localError ?? LiveWorkHost.ServerError;
-                if (!string.IsNullOrEmpty(error)) EditorGUILayout.HelpBox(error, MessageType.Error);
                 GUILayout.Space(8);
             }
             EditorGUILayout.EndScrollView();

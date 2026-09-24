@@ -10,8 +10,8 @@ It uses the same pairing, controls, video, and input as Chrome.
 - Full screen without browser bars; swipe from the edge to show system bars.
 - Keeps the screen on while the app is open.
 - Remembers the last server address.
-- Reads both values of **QR code opens** in the Unity LiveWork window: **Browser**
-  (a plain address) and **Android app** (a `livework://open?url=<encoded address>` link,
+- Reads both values of **Connection Mode** in the Unity LiveWork window: **Web**
+  (a plain address) and **Android** (a `livework://open?url=<encoded address>` link,
   which also opens the app from the phone's camera app).
 - Allows plain HTTP, because LiveWork runs on a private Tailscale network.
 - Back leaves fullscreen first, then returns to the home screen.

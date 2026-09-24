@@ -109,10 +109,11 @@ The window displays the server status, address, pairing code, and QR code.
 
 | Control | Action |
 | --- | --- |
-| Start server | Prepare and start the project's LiveWork service |
-| End server | Disconnect LiveWork and shut down that service; leave Unity's Play Mode unchanged |
-| Copy URL | Copy the browser address without the pairing code |
-| Open browser | Open the address in the host's browser |
+| Copy (next to Address) | Copy the browser address without the pairing code |
+| Open (next to Address) | Open the address in the host's browser |
+| Connection Mode | **Web** makes the QR code open the browser; **Android** makes it open the LiveWork app |
+| Start server (at the bottom) | Prepare and start the project's LiveWork service |
+| End server (at the bottom) | Disconnect LiveWork and shut down that service; leave Unity's Play Mode unchanged |
 
 A new server session generates a new pairing code. Ending a session restores the
 previous Game View selection and run-in-background setting.
@@ -185,7 +186,7 @@ The `android` folder contains a small Android app that shows the same web client
 full screen, without the browser's address bar, and keeps the screen on. The
 phone still needs Tailscale to reach the host. Build and install it as described in
 [android/README.md](android/README.md). In the Unity **LiveWork** window, set
-**QR code opens** to **Android app** so the phone's camera opens the app directly.
+**Connection Mode** to **Android** so the phone's camera opens the app directly.
 The app's own scanner reads both QR types.
 
 ## Performance tips

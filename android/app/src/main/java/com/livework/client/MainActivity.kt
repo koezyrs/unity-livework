@@ -367,14 +367,16 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(dp(40), dp(40)))
         layout.addView(TextView(this).apply {
             text = "Connecting…"
+            gravity = Gravity.CENTER_HORIZONTAL
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             setPadding(0, dp(20), 0, 0)
         })
         loadingAddress = TextView(this).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
             setTextColor(TEXT_MUTED)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(0, dp(6), 0, 0)
+            setPadding(dp(24), dp(6), dp(24), 0)
         }
         layout.addView(loadingAddress)
         return layout

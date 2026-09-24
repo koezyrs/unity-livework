@@ -38,6 +38,10 @@ Change a script, press Play, and try it on a real phone in seconds.
 - **Unity-style controls.** Play/Stop, Pause/Resume, and Step from the phone.
 - **Real Game View resolution.** Pick a preset or type a custom size.
 - **Stream quality presets.** Smooth for mobile data, Balanced, or Sharp.
+- **Scene picker.** Search every scene in the project and play it. Your open
+  scenes stay the same.
+- **Console.** Read Unity logs with stack traces, filter by Info, Warning, or
+  Error, and copy a log.
 - **Low latency.** H.264 hardware encoding, no video buffer delay, and input
   sent at most once per frame.
 - **Quick pairing.** Scan the QR code, or type the six-digit code.
@@ -138,8 +142,23 @@ the previous Game View and run-in-background settings. Play Mode is not changed.
 | Step | Advance one frame while paused |
 | Sound | Turn audio on or off (starts muted) |
 | Fullscreen | Show only the game |
-| ☰ Settings | Game resolution and stream quality |
+| ☰ Menu | Scenes, Console, and Settings (resolution and stream quality) |
 | Right-click the game | Lock the pointer (desktop browsers) |
+
+**Scenes** lists every scene in the project: first the scenes in Build
+Settings, then `Assets`, then `Packages`. Type in the search box to filter by
+name or path. The **Current** tag marks the scene that Play will run, and the
+**Running** tag marks the scene in Play Mode. When the game is stopped, tap a
+scene to make it current, then press Play on the main screen. When the game is
+running, tap a scene and confirm to stop and play again in that scene. LiveWork
+does not open the scene in the Editor. It uses the Play Mode start scene and
+restores your own setting when you end the server.
+
+**Console** shows Editor and game logs, including compile errors. Tap a log to
+see the full text and stack trace, and to copy it. The Info, Warning, and Error
+buttons show or hide each level. **Clear** empties the list on this device only.
+The service keeps the last 500 logs, so they come back after a reload. A red
+dot on ☰ means a new error arrived.
 
 **Game resolution** changes the real Game View, not only the picture on the
 device. Each side must be even and between 240 and 1920, with at most 2,073,600

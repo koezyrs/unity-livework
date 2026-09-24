@@ -25,6 +25,13 @@ scheduler delegates. Defaults remain upstream behavior. LiveWork drives signalin
 track creation and encoding from Editor ticks so pause, frame stepping, resizing
 and reconnect do not require advancing gameplay.
 
+`PeerConnection.cs`: ignore an answer that arrives when no local offer is pending.
+The signaling manager resends an unanswered offer every five seconds, and a slow
+browser answers both copies. The first answer completes negotiation; upstream then
+tried to apply the second one and logged `Called in wrong state: stable`. The
+connection was not affected, but the error reached the LiveWork web console as a
+false alarm. Offers and valid answers keep upstream behavior.
+
 `service/upstream` contains unmodified signaling handler/types from WebApp;
 `service/public/upstream` contains unmodified browser RenderStreaming/Peer/logger
 modules. The LiveWork server wraps signaling with pairing and single-controller

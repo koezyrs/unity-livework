@@ -74,12 +74,12 @@ nếu bạn dùng connection mode đó. Sau khi cài Node.js, khởi
 3. Dán URL sau:
 
    ```text
-   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.0.0
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.1.0
    ```
 
 4. Chờ Unity cài các package phụ thuộc và compile xong.
 
-Bỏ `#v1.0.0` nếu muốn luôn lấy code mới nhất từ nhánh `main`.
+Bỏ `#v1.1.0` nếu muốn luôn lấy code mới nhất từ nhánh `main`.
 
 ### 2. Cài app Android (không bắt buộc)
 

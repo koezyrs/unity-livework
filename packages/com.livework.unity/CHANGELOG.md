@@ -5,7 +5,7 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-09-25
 
 ### Added
 
@@ -24,6 +24,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - The web menu button is now named **Menu** and has three tabs: Scenes,
   Console, and Settings.
+- Debug builds of the Android app install next to the release app as
+  **LiveWork Dev**.
 
 ### Fixed
 
@@ -102,6 +104,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - One Git URL installation with the patched Render Streaming runtime and the web
   service included.
 
-[Unreleased]: https://github.com/koezyrs/unity-livework/compare/v1.0.0...HEAD
+[1.1.0]: https://github.com/koezyrs/unity-livework/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/koezyrs/unity-livework/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/koezyrs/unity-livework/releases/tag/v0.2.0

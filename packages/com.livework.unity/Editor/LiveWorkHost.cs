@@ -4,7 +4,9 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnityEditor;
@@ -16,7 +18,8 @@ using Object = UnityEngine.Object;
 
 namespace LiveWork.Editor
 {
-    [Serializable] public class HostConfig { public int port, pid; public string host, code, hostToken; }
+    [Serializable] public class HostConfig { public int port, pid; public string host, code, hostToken, mode; }
+    public enum ConnectionMode { Lan, Tailscale, ZeroTier }
     [Serializable] public class Command { public int v, width, height; public string type, id, command, quality; }
     [Serializable] public class HostState {
         public int v = 1, width, height, revision, frame;
@@ -54,6 +57,16 @@ namespace LiveWork.Editor
         public static string ConfigPath => Path.GetFullPath(Path.Combine(Application.dataPath, "../Library/LiveWork/host.json"));
         public static bool ServerReady => Enabled && !IsStopping && socket?.ReadyState == WebSocketState.Open && Config != null;
         public static string ServerStatus => LiveWorkService.IsPreparing ? "Preparing service…" : IsStopping ? "Ending server…" : ServerError != null ? "Server error" : ServerReady ? "Server running" : Enabled ? "Connecting to server…" : "Server stopped";
+        public static ConnectionMode Mode {
+            get => (ConnectionMode)Mathf.Clamp(EditorPrefs.GetInt("LiveWork.ConnectionMode", (int)ConnectionMode.Tailscale), 0, 2);
+            set {
+                if (Enabled || Config != null) throw new InvalidOperationException("End the server to change the connection mode.");
+                EditorPrefs.SetInt("LiveWork.ConnectionMode", (int)value);
+            }
+        }
+        /// <summary>The mode of the running server, or the chosen mode when no server runs.</summary>
+        public static ConnectionMode ActiveMode => Config != null && Enum.TryParse(Config.mode, true, out ConnectionMode mode) ? mode : Mode;
+        public static string ModeName(ConnectionMode mode) => mode == ConnectionMode.Lan ? "LAN" : mode.ToString();
         public static string ServiceDirectory {
             get {
                 var saved = EditorPrefs.GetString("LiveWork.ServiceDirectory." + Application.dataPath, "");
@@ -99,11 +112,19 @@ namespace LiveWork.Editor
             if (!File.Exists(Path.Combine(ServiceDirectory, "generated/signaling.cjs"))) throw new InvalidOperationException("Run npm ci and npm run build inside the service folder first.");
             ReadConfig();
             if (Config == null || !ProcessAlive(Config.pid)) {
+                var mode = Mode;
+                var network = FindNetwork(mode);
+                // Tailscale keeps working on localhost until Tailscale connects; its address range is fixed.
+                if (mode != ConnectionMode.Tailscale && network == null) throw new InvalidOperationException(mode == ConnectionMode.Lan
+                    ? "No LAN network found. Connect to Wi-Fi or Ethernet, then start the server again."
+                    : "ZeroTier is not connected. Join your ZeroTier network, then start the server again.");
                 if (File.Exists(ConfigPath)) File.Delete(ConfigPath);
                 Config = null;
                 var info = new ProcessStartInfo("node", "server.mjs") { WorkingDirectory = ServiceDirectory, UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
                 info.EnvironmentVariables["LIVEWORK_BIND"] = "0.0.0.0";
                 info.EnvironmentVariables["LIVEWORK_PORT"] = "0";
+                info.EnvironmentVariables["LIVEWORK_MODE"] = mode.ToString().ToLowerInvariant();
+                info.EnvironmentVariables["LIVEWORK_TRUST"] = mode == ConnectionMode.Tailscale ? "100.64.0.0/10,fd7a:115c:a1e0::/48" : network.Value.subnet;
                 info.EnvironmentVariables["LIVEWORK_STATE_DIRECTORY"] = Path.GetDirectoryName(ConfigPath);
                 Process.Start(info);
             }
@@ -119,13 +140,38 @@ namespace LiveWork.Editor
             try { Config = JsonUtility.FromJson<HostConfig>(File.ReadAllText(ConfigPath)); }
             catch { Config = null; }
         }
-        public static string BrowserUrl {
-            get {
-                var ip = NetworkInterface.GetAllNetworkInterfaces().Where(n => n.OperationalStatus == OperationalStatus.Up)
-                    .SelectMany(n => n.GetIPProperties().UnicastAddresses).Select(a => a.Address.ToString())
-                    .FirstOrDefault(a => { var s = a.Split('.'); return s.Length == 4 && s[0] == "100" && int.TryParse(s[1], out var n) && n >= 64 && n <= 127; });
-                return $"http://{ip ?? "127.0.0.1"}:{Config?.port ?? 8080}";
+        public static string BrowserUrl => $"http://{FindNetwork(ActiveMode)?.ip ?? "127.0.0.1"}:{Config?.port ?? 8080}";
+
+        /// <summary>Finds this computer's IPv4 address and subnet on the network of the given mode.</summary>
+        static (string ip, string subnet)? FindNetwork(ConnectionMode mode)
+        {
+            foreach (var n in NetworkInterface.GetAllNetworkInterfaces()) {
+                if (n.OperationalStatus != OperationalStatus.Up || n.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                bool zeroTier = Named(n, "ZeroTier"), tailscaleAdapter = Named(n, "Tailscale");
+                var properties = n.GetIPProperties();
+                foreach (var a in properties.UnicastAddresses) {
+                    if (a.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                    var b = a.Address.GetAddressBytes();
+                    bool tailscale = b[0] == 100 && b[1] >= 64 && b[1] <= 127;
+                    bool match = mode == ConnectionMode.Tailscale ? tailscale
+                        : mode == ConnectionMode.ZeroTier ? zeroTier
+                        : !zeroTier && !tailscaleAdapter && !tailscale && IsPrivate(b) && HasGateway(properties);
+                    if (match) return (a.Address.ToString(), Subnet(b, a.IPv4Mask));
+                }
             }
+            return null;
+        }
+        static bool Named(NetworkInterface n, string name) => n.Name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0 || n.Description.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0;
+        static bool IsPrivate(byte[] b) => b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168);
+        // Virtual adapters (Hyper-V, VirtualBox, WSL) usually have no default gateway; the real LAN adapter does.
+        static bool HasGateway(IPInterfaceProperties properties) => properties.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any));
+        static string Subnet(byte[] address, IPAddress mask)
+        {
+            var m = mask?.GetAddressBytes();
+            int prefix = m == null || m.Length != 4 ? 0 : m.Sum(x => Convert.ToString(x, 2).Count(c => c == '1'));
+            // Some adapters report no mask; trust a /24 instead of the whole address space.
+            if (prefix < 8) { prefix = 24; m = new byte[] { 255, 255, 255, 0 }; }
+            return $"{address[0] & m[0]}.{address[1] & m[1]}.{address[2] & m[2]}.{address[3] & m[3]}/{prefix}";
         }
 
         static void Update()

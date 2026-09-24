@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { createLiveWork } from '../server.mjs';
+import { createLiveWork, createTrust, tailscale } from '../server.mjs';
 import { pointInVideo } from '../public/input.js';
 
 const open = (url, options) => new Promise((resolve, reject) => { const ws = new WebSocket(url, options); ws.once('open', () => resolve(ws)); ws.once('error', reject); });
@@ -87,5 +87,28 @@ test('shutdown requires the host token, closes clients and releases its port', a
     assert.equal(app.server.listening, false);
     const restarted = await createLiveWork({ port: app.port });
     await restarted.close();
+  } finally { await app.close(); }
+});
+
+test('trust only loopback and the networks of the chosen connection mode', async () => {
+  const lan = createTrust(['192.168.1.0/24']);
+  assert.equal(lan('127.0.0.1'), true);
+  assert.equal(lan('::1'), true);
+  assert.equal(lan('192.168.1.42'), true);
+  assert.equal(lan('::ffff:192.168.1.42'), true);
+  assert.equal(lan('192.168.2.42'), false);
+  assert.equal(lan('100.100.1.1'), false);
+  assert.equal(lan(undefined), false);
+  const tail = createTrust(tailscale);
+  assert.equal(tail('100.64.0.1'), true);
+  assert.equal(tail('100.127.255.254'), true);
+  assert.equal(tail('100.128.0.1'), false);
+  assert.equal(tail('fd7a:115c:a1e0::1'), true);
+  assert.equal(tail('192.168.1.42'), false);
+  const app = await createLiveWork({ port: 0, code: '123456', mode: 'lan', trust: ['10.0.0.0/8'] });
+  try {
+    assert.equal(app.mode, 'lan');
+    assert.deepEqual(app.trust, ['10.0.0.0/8']);
+    assert.equal((await fetch(`http://127.0.0.1:${app.port}/api/health`)).status, 200);
   } finally { await app.close(); }
 });

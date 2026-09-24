@@ -16,9 +16,12 @@ namespace LiveWork.Editor
         static readonly string[] QrTargets = { "Web", "Android" };
         static bool QrForApp { get => EditorPrefs.GetBool("LiveWork.QrForApp", false); set => EditorPrefs.SetBool("LiveWork.QrForApp", value); }
 
+        const string IconPath = "Packages/com.livework.unity/Editor/Icons/LiveWork.png";
+        static Texture2D Icon => AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+
         [MenuItem("Window/LiveWork")]
-        public static void Open() => GetWindow<LiveWorkWindow>("LiveWork");
-        void OnEnable() { minSize = new Vector2(300, 420); }
+        public static void Open() => GetWindow<LiveWorkWindow>();
+        void OnEnable() { minSize = new Vector2(300, 420); titleContent = new GUIContent("LiveWork", Icon); }
         void OnDisable() { ClearQr(); if (dot != null) DestroyImmediate(dot); dot = null; }
         void OnInspectorUpdate() => Repaint();
         void ClearQr() { if (qr != null) DestroyImmediate(qr); qr = null; qrPayload = null; }
@@ -42,7 +45,10 @@ namespace LiveWork.Editor
             scroll = EditorGUILayout.BeginScrollView(scroll);
             using (new EditorGUILayout.VerticalScope(EditorStyles.inspectorDefaultMargins)) {
                 GUILayout.Space(8);
-                GUILayout.Label("LiveWork", EditorStyles.boldLabel);
+                using (new EditorGUILayout.HorizontalScope()) {
+                    if (Icon != null) GUILayout.Label(Icon, GUILayout.Width(20), GUILayout.Height(20));
+                    GUILayout.Label("LiveWork", EditorStyles.boldLabel, GUILayout.Height(20));
+                }
                 StatusRow();
                 GUILayout.Space(8);
                 bool ready = LiveWorkHost.ServerReady;

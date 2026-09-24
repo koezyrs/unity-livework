@@ -23,6 +23,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - The web menu button is now named **Menu** and has three tabs: Scenes,
   Console, and Settings.
 
+### Fixed
+
+- Unity no longer logs `Failed to set remote answer sdp: Called in wrong state:
+  stable` when a slow device answers a resent offer twice. The connection was
+  not affected, but the error showed as a false alarm in the console.
+
 ## [1.0.0] - 2026-09-25
 
 ### Added

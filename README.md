@@ -54,12 +54,13 @@ Change a script, press Play, and try it on a real phone in seconds.
 | Unity Editor | **6000.3.11f1** or **6000.2.7f2** |
 | Node.js | **22 or newer**, with npm on PATH |
 | Git | Installed and available to Unity Package Manager |
-| Network | [Tailscale](https://tailscale.com) on both devices, or localhost on the host |
+| Network | The same Wi-Fi or Ethernet network (LAN), [Tailscale](https://tailscale.com), or [ZeroTier](https://www.zerotier.com) on both devices, or localhost on the host |
 | Phone | Android 8.0 or newer (app or Chrome), or Chrome/Edge on desktop |
 | Audio | An active AudioListener in the scene |
 | Keyboard/mouse | Active Input Handling set to **Input System** or **Both** |
 
-Install Node.js, Git, and Tailscale before you start LiveWork. Restart Unity
+Install Node.js and Git before you start LiveWork. Install Tailscale or ZeroTier
+only if you use that connection mode. Restart Unity
 after you install Node.js so Unity sees the new PATH.
 
 ## Quick start
@@ -90,14 +91,27 @@ No USB cable or developer mode is needed. You can also use Chrome instead of the
 
 ### 3. Connect
 
-1. Open your scene, then open **Window → LiveWork** and click **Start server**.
-   The first start downloads the service dependencies with npm.
-2. Set **Connection Mode** to **Android** for the app, or **Web** for a browser.
-3. Scan the QR code with the phone.
-4. Press **Play** in the toolbar, then touch the game.
+1. Open your scene, then open **Window → LiveWork**.
+2. Choose a **Connection Mode**: **LAN**, **Tailscale**, or **ZeroTier**.
+3. Click **Start server**. The first start downloads the service dependencies with npm.
+4. Set **QRCode** to **Android** for the app, or **Web** for a browser.
+5. Scan the QR code with the phone.
+6. Press **Play** in the toolbar, then touch the game.
 
-For a phone, both devices must be on the same Tailscale network. A `127.0.0.1`
-address works only on the host computer.
+For a phone, both devices must be on the network of the chosen connection mode.
+A `127.0.0.1` address works only on the host computer.
+
+### Connection modes
+
+| Mode | When to use it | The service accepts |
+| --- | --- | --- |
+| **LAN** | The phone and the host are on the same Wi-Fi or Ethernet network | The host's LAN subnet, for example `192.168.1.0/24` |
+| **Tailscale** | Any network, through a free private [Tailscale](https://tailscale.com) network | `100.64.0.0/10` and `fd7a:115c:a1e0::/48` |
+| **ZeroTier** | Any network, through a free private [ZeroTier](https://www.zerotier.com) network | The subnet of the host's ZeroTier network |
+
+The service always accepts localhost too. You can change the mode only while the
+server is stopped: click **End server** first. LAN mode picks the network adapter
+with a default gateway, so virtual adapters (Hyper-V, VirtualBox, WSL) are skipped.
 
 ## Usage
 
@@ -108,7 +122,8 @@ address works only on the host computer.
 | Address · Copy | Copy the address |
 | Address · Open | Open the address in the host's browser |
 | Pairing code | The six-digit code to type on the device |
-| Connection Mode | **Web**: the QR code opens the browser. **Android**: it opens the LiveWork app |
+| Connection Mode | **LAN**, **Tailscale**, or **ZeroTier**. Locked while the server runs |
+| QRCode | **Web**: the QR code opens the browser. **Android**: it opens the LiveWork app |
 | Start server / End server | Start or stop the LiveWork service for this project |
 
 Each new server session creates a new pairing code. Ending a session restores
@@ -166,12 +181,14 @@ game scripts.
 
 - Each project runs its own service on a free port. Copy the address from the
   LiveWork window.
-- The service accepts only localhost and Tailscale addresses, and it requires
-  pairing before any control or video.
+- The service accepts only localhost and the network of the chosen connection
+  mode, and it requires pairing before any control or video. In LAN mode, anyone
+  on the same Wi-Fi can open the page, so use LAN only on networks you trust.
 - Video and input go directly between the two devices. No public STUN or TURN
   server is used.
 - The Android app and the web client use plain HTTP inside your private
-  Tailscale network. Do not expose the service to the public internet.
+  network. Do not use LAN mode on public Wi-Fi, and do not expose the service
+  to the public internet.
 - `Library/LiveWork/host.json` contains local credentials. Do not commit it.
 
 ## Troubleshooting
@@ -180,7 +197,8 @@ game scripts.
 | --- | --- |
 | Start server fails | Install Node.js 22+ with npm, restart Unity, and read the error in the window |
 | First start fails | Check the npm connection and proxy settings, then try again |
-| The phone cannot open the address | Connect both devices to Tailscale. Do not use `127.0.0.1` on the phone |
+| The phone cannot open the address | Connect both devices to the network of the chosen connection mode. Do not use `127.0.0.1` on the phone |
+| "No LAN network found" or "ZeroTier is not connected" | Connect the host to that network, or choose another connection mode |
 | "Another browser may be controlling Unity" | Close the other tab or app, then connect again |
 | The pairing code is rejected | Use the current code. Restarting the server changes it |
 | Duplicate Render Streaming assembly | Remove the separate `com.unity.renderstreaming` package |
@@ -210,7 +228,7 @@ npm test              # service tests
 npm run test:ui       # web UI tests with Playwright and Microsoft Edge
 npm run check:bundle  # checks the committed package bundles
 npm run build         # regenerates Service~ and the bundled runtime
-npm run brand         # regenerates all logo files
+npm run brand         # regenerates all logo and icon files
 ```
 
 To build the Android app, see [android/README.md](android/README.md).

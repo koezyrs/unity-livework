@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Net.Codecrete.QrCodeGenerator;
 using UnityEditor;
 using UnityEngine;
@@ -18,6 +19,8 @@ namespace LiveWork.Editor
 
         const string IconPath = "Packages/com.livework.unity/Editor/Icons/LiveWork.png";
         static Texture2D Icon => AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+        static GUIContent[] ModeOptions => ((ConnectionMode[])Enum.GetValues(typeof(ConnectionMode)))
+            .Select(m => new GUIContent(" " + LiveWorkHost.ModeName(m), AssetDatabase.LoadAssetAtPath<Texture2D>($"Packages/com.livework.unity/Editor/Icons/{m}.png"))).ToArray();
 
         [MenuItem("Window/LiveWork")]
         public static void Open() => GetWindow<LiveWorkWindow>();
@@ -51,6 +54,8 @@ namespace LiveWork.Editor
                 }
                 StatusRow();
                 GUILayout.Space(8);
+                ModeRow();
+                GUILayout.Space(8);
                 bool ready = LiveWorkHost.ServerReady;
                 string url = ready ? LiveWorkHost.BrowserUrl : null;
                 EditorGUILayout.LabelField("Address", EditorStyles.miniLabel);
@@ -67,7 +72,7 @@ namespace LiveWork.Editor
                 var codeStyle = new GUIStyle(EditorStyles.textField) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
                 EditorGUILayout.SelectableLabel(ready ? LiveWorkHost.Config.code : "— — — — — —", codeStyle, GUILayout.Height(36));
                 GUILayout.Space(12);
-                QrForApp = EditorGUILayout.Popup("Connection Mode:", QrForApp ? 1 : 0, QrTargets) == 1;
+                QrForApp = EditorGUILayout.Popup("QRCode:", QrForApp ? 1 : 0, QrTargets) == 1;
                 GUILayout.Space(6);
                 if (ready) {
                     var pairUrl = url + "/#pair=" + Uri.EscapeDataString(LiveWorkHost.Config.code);
@@ -77,7 +82,7 @@ namespace LiveWork.Editor
                 } else if (qr != null) ClearQr();
                 DrawQr(ready);
                 GUILayout.Space(6);
-                if (ready) EditorGUILayout.HelpBox(url.Contains("127.0.0.1") ? "Localhost: this address works on this computer only." : QrForApp ? "Scan with your phone’s camera to open the LiveWork app." : "Scan with your phone’s camera to connect.", MessageType.None);
+                if (ready) EditorGUILayout.HelpBox(url.Contains("127.0.0.1") ? $"{LiveWorkHost.ModeName(LiveWorkHost.ActiveMode)} network not found: this address works on this computer only." : QrForApp ? "Scan with your phone’s camera to open the LiveWork app." : "Scan with your phone’s camera to connect.", MessageType.None);
                 var error = localError ?? LiveWorkHost.ServerError;
                 if (!string.IsNullOrEmpty(error)) EditorGUILayout.HelpBox(error, MessageType.Error);
                 GUILayout.Space(8);
@@ -92,6 +97,21 @@ namespace LiveWork.Editor
                 GUILayout.Space(8);
             }
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>The network choice; it is locked while a server runs because the server trusts only that network.</summary>
+        void ModeRow()
+        {
+            bool locked = LiveWorkHost.Enabled || LiveWorkHost.Config != null || LiveWorkHost.IsStopping || LiveWorkService.IsPreparing;
+            var label = new GUIContent("Connection Mode:", locked ? "End the server to change the connection mode." : "The network your phone or browser uses to reach this computer.");
+            using (new EditorGUI.DisabledScope(locked)) {
+                // The logos are 32 px for sharp high-DPI output; draw them at text height.
+                EditorGUIUtility.SetIconSize(new Vector2(16, 16));
+                int chosen = EditorGUILayout.Popup(label, (int)LiveWorkHost.ActiveMode, ModeOptions, GUILayout.Height(20));
+                EditorGUIUtility.SetIconSize(Vector2.zero);
+                if (!locked && chosen != (int)LiveWorkHost.Mode) LiveWorkHost.Mode = (ConnectionMode)chosen;
+            }
+            if (locked) EditorGUILayout.LabelField("End the server to change the connection mode.", EditorStyles.miniLabel);
         }
 
         /// <summary>Draws the QR code in a white square that keeps the same size for every payload.</summary>

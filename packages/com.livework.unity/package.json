@@ -1,7 +1,7 @@
 {
   "name": "com.livework.unity",
   "displayName": "Unity LiveWork",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "unity": "6000.2",
   "description": "Stream the Unity Editor Game View to your phone or PC browser and play it live over WebRTC. Touch, mouse, and keyboard input go back to the game. Includes Play/Pause/Step controls, resolution and stream quality settings, QR pairing, and an Android app.",
   "author": {

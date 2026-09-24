@@ -72,12 +72,12 @@ after you install Node.js so Unity sees the new PATH.
 3. Paste this URL:
 
    ```text
-   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v0.2.0
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.0.0
    ```
 
 4. Wait for Unity to install the dependencies and compile.
 
-Remove `#v0.2.0` to always get the latest code from `main`.
+Remove `#v1.0.0` to always get the latest code from `main`.
 
 ### 2. Install the Android app (optional)
 

@@ -137,6 +137,10 @@ try {
   await expect(page.locator('#play')).toBeDisabled();
   state = { ...state, state: 'stopped' }; editor.send(JSON.stringify(state));
   await expect(page.locator('#play')).toBeEnabled();
+  // A short Editor disconnect must not show the "not connected" error at once.
+  editor.close();
+  await expect(page.locator('#status')).toHaveText('connecting');
+  await expect(page.locator('#overlayText')).toHaveText('Starting video…');
   await app.close();
   await expect(page.locator('#status')).toHaveText('offline');
   await expect(page.locator('#play')).toBeDisabled();

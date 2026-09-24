@@ -6,6 +6,9 @@ const video = $('video'), stage = $('stage'), canvas = $('lastFrame');
 let control, stream, channel, streamRevision = -1, state = {}, reconnectTimer, mediaTimer, generation = 0, requestId = 0;
 let connectedOnce = false, mediaReady = false, mediaStarting = false, pairing = false, messageTimer, controlGeneration = 0;
 let resolutionEdited = false;
+// Unity often reconnects within a few seconds; report it as offline only when it stays away.
+const OFFLINE_GRACE_MS = 15000;
+let offlineSince = 0, offlineTimer;
 const pending = new Map();
 const icons = {
   play: '<path fill="currentColor" stroke="none" d="M7 4l13 8-13 8z"/>',
@@ -98,7 +101,7 @@ async function connectControl() {
   ws.onclose = () => {
     if (control !== ws) return;
     stopMedia(); pending.clear(); resolutionEdited = false;
-    updateState({ state: 'offline', message: 'Connection lost. Reconnecting…' });
+    updateState({ state: 'offline', message: 'Connection lost. Reconnecting…', local: true });
     if (!connectedOnce) {
       showWorkspace(false); $('pairError').textContent = 'Another browser may be controlling Unity. Close that tab and connect again.';
     } else reconnectTimer = setTimeout(connectControl, 2000);
@@ -206,14 +209,20 @@ function updateState(next) {
   if (next.revision !== state.revision || next.state !== 'playing') resetInput();
   const previousMessage = state.message;
   state = next;
-  $('status').textContent = state.state || 'connecting'; $('status').dataset.state = state.state;
+  clearTimeout(offlineTimer);
+  if (state.state !== 'offline') offlineSince = 0;
+  else if (!offlineSince) offlineSince = Date.now();
+  const waitLeft = state.state === 'offline' && !state.local ? OFFLINE_GRACE_MS - (Date.now() - offlineSince) : 0;
+  if (waitLeft > 0) offlineTimer = setTimeout(() => updateState(state), waitLeft);
+  const shownState = waitLeft > 0 ? 'connecting' : state.state || 'connecting';
+  $('status').textContent = shownState; $('status').dataset.state = shownState;
   renderControls();
   // The overlay already shows the message of these states; a toast would repeat it.
   const overlayMessage = ['offline', 'reloading', 'error'].includes(state.state);
   if (state.message !== previousMessage) showMessage(overlayMessage ? '' : state.message || '');
   $('overlay').hidden = mediaReady && ['playing', 'paused'].includes(state.state);
   $('overlay').dataset.busy = String(state.state !== 'stopped' && state.state !== 'error');
-  $('overlayText').textContent = state.state === 'playing' || state.state === 'paused' ? 'Starting video…' : state.state === 'stopped' ? 'Press Play to start' : state.state === 'reloading' ? (state.message || 'Unity is reloading scripts…') : state.state === 'error' ? (state.message || 'Check the Unity Console') : (state.message || 'Waiting for Unity…');
+  $('overlayText').textContent = state.state === 'playing' || state.state === 'paused' || waitLeft > 0 ? 'Starting video…' : state.state === 'stopped' ? 'Press Play to start' : state.state === 'reloading' ? (state.message || 'Unity is reloading scripts…') : state.state === 'error' ? (state.message || 'Check the Unity Console') : (state.message || 'Waiting for Unity…');
   if (!running() || !state.streaming) { stopMedia(); return; }
   if (stream && streamRevision !== state.revision) stopMedia();
   if (!stream && !mediaStarting && !mediaTimer) startMedia();

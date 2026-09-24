@@ -147,8 +147,9 @@ $('qualities').onchange = e => {
   if (e.target.name === 'quality' && !command('SetStreamQuality', { quality: e.target.value })) renderControls();
 };
 function choose(name, value) { for (const input of document.getElementsByName(name)) input.checked = input.value === value; }
-const scenes = bindScenes({ list: $('sceneList'), search: $('sceneSearch'), empty: $('sceneEmpty'),
-  play: scene => { const sent = command('Play', { scene }); if (sent) showSettings(false); return sent; } });
+const scenes = bindScenes({ list: $('sceneList'), search: $('sceneSearch'), empty: $('sceneEmpty'), hint: $('sceneHint'),
+  select: scene => command('SelectScene', { scene }),
+  restart: scene => { const sent = command('Play', { scene }); if (sent) showSettings(false); return sent; } });
 const logs = bindConsole({ panel: $('consolePanel'), list: $('logList'), empty: $('logEmpty'), search: $('logSearch'), clear: $('clearLogs'), jump: $('jumpLatest'),
   onError: () => { if ($('settings').hidden || currentTab !== 'console') alertErrors(true); } });
 const tabs = [...document.querySelectorAll('[role="tab"]')];

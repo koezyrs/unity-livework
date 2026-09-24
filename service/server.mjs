@@ -10,7 +10,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 const require = createRequire(import.meta.url);
 const signaling = require('./generated/signaling.cjs');
 const root = path.dirname(fileURLToPath(import.meta.url));
-const commands = new Set(['Play', 'Stop', 'Pause', 'Resume', 'Step', 'SetResolution', 'SetStreamQuality']);
+const commands = new Set(['Play', 'Stop', 'Pause', 'Resume', 'Step', 'SetResolution', 'SetStreamQuality', 'SelectScene']);
 const qualities = new Set(['smooth', 'balanced', 'sharp']);
 const levels = new Set(['info', 'warning', 'error']);
 const maxLogs = 500, maxScenes = 2000;
@@ -156,7 +156,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         if (pending.size >= 16) return result(ws, msg.id, false, 'Too many commands are waiting. Try again in a moment.');
         if (msg.command === 'SetResolution' && (!Number.isInteger(msg.width) || !Number.isInteger(msg.height) || msg.width < 240 || msg.height < 240 || msg.width > 1920 || msg.height > 1920 || msg.width % 2 || msg.height % 2 || msg.width * msg.height > 2073600)) return result(ws, msg.id, false, 'Use even dimensions 240–1920, up to 2,073,600 pixels');
         if (msg.command === 'SetStreamQuality' && !qualities.has(msg.quality)) return result(ws, msg.id, false, 'Unknown stream quality');
-        if (msg.command === 'Play' && msg.scene !== undefined && (!scenePath(msg.scene) || !scenePaths.has(msg.scene))) return result(ws, msg.id, false, 'This scene is not in the project scene list.');
+        if ((msg.command === 'SelectScene' || msg.command === 'Play' && msg.scene !== undefined) && (!scenePath(msg.scene) || !scenePaths.has(msg.scene))) return result(ws, msg.id, false, 'This scene is not in the project scene list.');
         if (!editor || editor.readyState !== WebSocket.OPEN) return result(ws, msg.id, false, 'Unity Editor is not connected. The command was not sent.');
         pending.set(msg.id, { ws, timer: setTimeout(() => { pending.delete(msg.id); result(ws, msg.id, false, 'Unity did not confirm the command. Check the Editor before you try again.'); }, commandTimeout(msg)) });
         send(editor, msg);

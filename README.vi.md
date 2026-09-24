@@ -145,10 +145,12 @@ Mỗi lần bật server sẽ có mã kết nối mới. Khi tắt server, LiveW
 
 **Scenes** liệt kê mọi scene trong project: đầu tiên là scene trong Build
 Settings, sau đó là `Assets`, rồi đến `Packages`. Gõ vào ô tìm kiếm để lọc theo
-tên hoặc đường dẫn. Chạm vào một scene để chạy nó. Nếu game đang chạy, LiveWork
-sẽ hỏi trước, rồi dừng và chạy lại với scene mới. LiveWork không mở scene đó
-trong Editor. Nó dùng Play Mode start scene và trả lại cài đặt của bạn khi Play
-Mode kết thúc.
+tên hoặc đường dẫn. Nhãn **Current** đánh dấu scene sẽ chạy khi bấm Play, còn
+nhãn **Running** đánh dấu scene đang chạy. Khi game đang dừng, chạm vào một scene
+để chọn nó làm scene hiện tại, rồi bấm Play ở màn hình chính. Khi game đang chạy,
+chạm vào một scene và xác nhận để dừng rồi chạy lại với scene đó. LiveWork không
+mở scene đó trong Editor. Nó dùng Play Mode start scene và trả lại cài đặt của
+bạn khi bạn tắt server.
 
 **Console** hiện log của Editor và game, kể cả lỗi compile. Chạm vào một log để
 xem toàn bộ nội dung, stack trace, và copy. Các nút Info, Warning, Error dùng để

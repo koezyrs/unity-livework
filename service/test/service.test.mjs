@@ -95,11 +95,19 @@ test('forward scenes and logs, replay them on reconnect, and validate scene comm
     const hidden = (await secret).entries[0];
     assert.ok(!hidden.message.includes(app.hostToken) && !hidden.stack.includes(app.hostToken), 'Logs must not reveal the host token');
     assert.match(hidden.message, /token=\[host token\]$/);
-    for (const [id, scene] of [['unknown', 'Assets/Missing.unity'], ['notscene', 'Assets/notes.txt'], ['number', 5]]) {
-      const reply = message(control, m => m.id === id);
-      control.send(JSON.stringify({ v: 1, type: 'command', command: 'Play', id, scene }));
-      assert.equal((await reply).ok, false, id);
+    for (const command of ['Play', 'SelectScene']) {
+      for (const [id, scene] of [['unknown', 'Assets/Missing.unity'], ['notscene', 'Assets/notes.txt'], ['number', 5]]) {
+        const reply = message(control, m => m.id === command + id);
+        control.send(JSON.stringify({ v: 1, type: 'command', command, id: command + id, scene }));
+        assert.equal((await reply).ok, false, command + id);
+      }
     }
+    const missing = message(control, m => m.id === 'noscene');
+    control.send(JSON.stringify({ v: 1, type: 'command', command: 'SelectScene', id: 'noscene' }));
+    assert.equal((await missing).ok, false);
+    const selected = message(editor, m => m.type === 'command');
+    control.send(JSON.stringify({ v: 1, type: 'command', command: 'SelectScene', id: 'select', scene: 'Assets/Main.unity' }));
+    assert.equal((await selected).scene, 'Assets/Main.unity');
     const forwarded = message(editor, m => m.type === 'command');
     control.send(JSON.stringify({ v: 1, type: 'command', command: 'Play', id: 'scene', scene: 'Assets/Other.unity' }));
     assert.equal((await forwarded).scene, 'Assets/Other.unity');

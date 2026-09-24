@@ -147,10 +147,12 @@ the previous Game View and run-in-background settings. Play Mode is not changed.
 
 **Scenes** lists every scene in the project: first the scenes in Build
 Settings, then `Assets`, then `Packages`. Type in the search box to filter by
-name or path. Tap a scene to play it. If the game is already running, LiveWork
-asks first, then stops and plays again in the new scene. LiveWork does not open
-the scene in the Editor. It uses the Play Mode start scene and restores your own
-setting when Play Mode ends.
+name or path. The **Current** tag marks the scene that Play will run, and the
+**Running** tag marks the scene in Play Mode. When the game is stopped, tap a
+scene to make it current, then press Play on the main screen. When the game is
+running, tap a scene and confirm to stop and play again in that scene. LiveWork
+does not open the scene in the Editor. It uses the Play Mode start scene and
+restores your own setting when you end the server.
 
 **Console** shows Editor and game logs, including compile errors. Tap a log to
 see the full text and stack trace, and to copy it. The Info, Warning, and Error

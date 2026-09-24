@@ -7,7 +7,7 @@ no Unity installation is needed. Covers pairing failures, Unicode input, origin
 checks, exclusive control, validation, forwarding/results, disconnect reset and
 portrait/landscape letterboxing, plus host-authorized shutdown and port reuse,
 scene list and log forwarding, log replay and limits, host token removal from
-logs, and scene command validation.
+logs, and `Play`/`SelectScene` scene validation.
 
 Run `npm run test:ui` for browser checks with a simulated Editor. These cover code
 and QR pairing, exclusive control, transport states, custom resolution validation,

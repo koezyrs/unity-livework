@@ -24,7 +24,7 @@ namespace LiveWork.Editor
     [Serializable] public class Command { public int v, width, height; public string type, id, command, quality, scene; }
     [Serializable] public class HostState {
         public int v = 1, width, height, revision, frame;
-        public string type = "state", state, message, inputMode, quality, scene, unity = Application.unityVersion;
+        public string type = "state", state, message, inputMode, quality, scene, startScene, unity = Application.unityVersion;
         public bool streaming, isPlaying, isPaused;
     }
     [Serializable] public class CommandResult { public int v = 1; public string type = "result", id, message; public bool ok; }
@@ -267,6 +267,7 @@ namespace LiveWork.Editor
         {
             if (state == PlayModeStateChange.EnteredPlayMode) { playReady = true; SessionState.SetBool("LiveWork.PlayReady", true); }
             if (state == PlayModeStateChange.ExitingPlayMode || state == PlayModeStateChange.ExitingEditMode) { playReady = false; SessionState.SetBool("LiveWork.PlayReady", false); }
+            if (state == PlayModeStateChange.ExitingEditMode) LiveWorkScenes.OnExitingEditMode();
             if (state == PlayModeStateChange.EnteredEditMode) LiveWorkScenes.OnEnteredEditMode(message => { error = message; Publish(); });
             playModeChange = state == PlayModeStateChange.ExitingEditMode ? "Unity is starting Play Mode…" : state == PlayModeStateChange.ExitingPlayMode ? "Unity is stopping Play Mode…" : null;
             if (!Enabled) return;
@@ -285,7 +286,7 @@ namespace LiveWork.Editor
         {
             if (!Enabled) return;
             SessionState.SetBool("LiveWork.Enabled", false);
-            LiveWorkConsole.Stop(); LiveWorkConsole.Clear(); LiveWorkScenes.CancelRestart();
+            LiveWorkConsole.Stop(); LiveWorkConsole.Clear(); LiveWorkScenes.Restore();
             StopStream(); socket?.Close(); socket = null; GameViewBridge.Restore(); Status = "Disabled";
             Application.runInBackground = SessionState.GetBool("LiveWork.Background", false);
             pending = null;
@@ -336,9 +337,12 @@ namespace LiveWork.Editor
                     case "Play":
                         if (compileError || EditorUtility.scriptCompilationFailed) throw new InvalidOperationException("Fix compilation errors before Play");
                         error = null;
-                        if (!string.IsNullOrEmpty(cmd.scene)) { input?.Reset(); LiveWorkScenes.Play(cmd.scene); }
+                        if (!string.IsNullOrEmpty(cmd.scene)) { input?.Reset(); LiveWorkScenes.Restart(cmd.scene); }
                         else EditorApplication.isPlaying = true;
                         break;
+                    case "SelectScene":
+                        if (EditorApplication.isPlaying) throw new InvalidOperationException("Stop first, or restart in the scene");
+                        LiveWorkScenes.Select(cmd.scene); break;
                     case "Stop": input?.Reset(); EditorApplication.isPlaying = false; break;
                     case "Pause":
                         if (!EditorApplication.isPlaying) throw new InvalidOperationException("Play first");
@@ -372,7 +376,7 @@ namespace LiveWork.Editor
             bool done = sceneStart ? EditorApplication.isPlaying && EditorApplication.isPlayingOrWillChangePlaymode && !LiveWorkScenes.Restarting && LiveWorkScenes.StartScene == pending.scene :
                 pending.command == "Play" ? EditorApplication.isPlaying : pending.command == "Stop" ? !EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode :
                 pending.command == "Pause" ? EditorApplication.isPaused : pending.command == "Resume" ? !EditorApplication.isPaused :
-                pending.command == "Step" ? Time.frameCount > stepStart : pending.command == "SetStreamQuality" ? Quality == pending.quality : size.x == pending.width && size.y == pending.height;
+                pending.command == "Step" ? Time.frameCount > stepStart : pending.command == "SelectScene" ? LiveWorkScenes.StartScene == pending.scene : pending.command == "SetStreamQuality" ? Quality == pending.quality : size.x == pending.width && size.y == pending.height;
             if (done || now - pendingSince > (sceneStart ? 55 : 15)) { Reply(pending, done, done ? "Completed" : "Editor did not reach the requested state"); pending = null; Publish(); }
         }
         static void Reply(Command cmd, bool ok, string message) => Send(new CommandResult { id = cmd.id, ok = ok, message = message });
@@ -387,7 +391,7 @@ namespace LiveWork.Editor
             var reloadMessage = playModeChange ?? (EditorApplication.isCompiling ? "Unity is compiling scripts…" : "Unity is reloading scripts…");
             Send(new HostState { state = Status, message = error ?? (Status == "reloading" ? reloadMessage : ""), width = size.x, height = size.y, revision = revision,
                 frame = EditorApplication.isPlaying ? Time.frameCount : 0, inputMode = mode == 0 ? "legacy-touch" : mode == 1 ? "input-system" : "both", quality = Quality, streaming = stream != null,
-                scene = EditorApplication.isPlaying ? SceneManager.GetActiveScene().path : "",
+                scene = EditorApplication.isPlaying ? SceneManager.GetActiveScene().path : "", startScene = LiveWorkScenes.Current,
                 isPlaying = EditorApplication.isPlaying, isPaused = EditorApplication.isPaused });
         }
     }

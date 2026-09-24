@@ -9,10 +9,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
-- **Scenes** tab in the web menu. Search every scene in the project and play it.
-  If the game is running, LiveWork asks, then restarts Play Mode in the chosen
-  scene. The scene is not opened in the Editor, and your Play Mode start scene
-  is restored when Play Mode ends.
+- **Scenes** tab in the web menu. Search every scene in the project. A
+  **Current** tag marks the scene that Play will run. When the game is stopped,
+  tap a scene to make it current, then press Play. When the game is running,
+  LiveWork asks, then restarts Play Mode in the chosen scene. The scene is not
+  opened in the Editor, and your Play Mode start scene is restored when you end
+  the server.
 - **Console** tab in the web menu. It shows Editor and game logs, including
   compile errors, with stack traces. You can filter Info, Warning, and Error
   logs, search, and copy one log. A red dot on the menu button means a new

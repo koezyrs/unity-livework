@@ -23,12 +23,14 @@ have `v: 1`. JSON is capped at 128 KiB; data channel input is capped at 8 KiB.
 {"v":1,"type":"result","id":"unique-request-id","ok":true,"message":"Completed"}
 ```
 
-Commands: `Play`, `Stop`, `Pause`, `Resume`, `Step`, `SetResolution`, `SetStreamQuality`.
-`Play` takes an optional `scene`: a `.unity` asset path (at most 512 characters)
-from the latest scene list. The Editor plays that scene through the Play Mode
-start scene, without opening it, and restores the previous start scene when Play
-Mode ends. If the game is already playing, the Editor stops and plays again in
-that scene. The service waits 60 seconds for this command instead of 20.
+Commands: `Play`, `Stop`, `Pause`, `Resume`, `Step`, `SetResolution`, `SetStreamQuality`,
+`SelectScene`. `SelectScene` and `Play` take `scene`: a `.unity` asset path (at
+most 512 characters) from the latest scene list. `SelectScene` is required to
+have it and works only in Edit Mode: it sets the Play Mode start scene, without
+opening the scene, so the next Play runs it. For `Play`, `scene` is optional and
+works only in Play Mode: the Editor stops and plays again in that scene. The
+service waits 60 seconds for this command instead of 20. The Editor restores the
+user's own start scene when the LiveWork session ends.
 `SetStreamQuality` takes `quality`: `smooth` (960 px longest edge, 2.5 Mbps),
 `balanced` (default, 1280 px, 4 Mbps) or `sharp` (1280 px, 8 Mbps). All run at
 30 FPS. The Editor recreates the stream with the new settings, so `revision` changes.
@@ -38,8 +40,10 @@ transition may survive domain reload via SessionState; this resumes observation,
 not execution. The service times out after 20 seconds.
 
 State contains `state`, `message`, `width`, `height`, `revision`, `frame`,
-`inputMode`, `quality`, `scene`, `unity`, `streaming`, `isPlaying`, `isPaused`.
-`scene` is the path of the active scene in Play Mode, or empty. `state` is one of
+`inputMode`, `quality`, `scene`, `startScene`, `unity`, `streaming`, `isPlaying`,
+`isPaused`. `scene` is the path of the active scene in Play Mode, or empty.
+`startScene` is the scene that Play runs (or ran): the Play Mode start scene, or
+else the active Editor scene. It is empty for an unsaved scene. `state` is one of
 `offline`, `stopped`, `playing`, `paused`, `reloading`, `error`. Connection setup
 is displayed as `connecting` by the client. `revision` changes on every recreated
 stream; input from an old revision is discarded.

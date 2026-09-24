@@ -78,6 +78,11 @@ try {
   await expect(page.locator('#menu')).toHaveAttribute('aria-expanded', 'true');
   await settled(); await screenshot('settings-mobile');
   await expect(page.locator('#preset')).toHaveValue('1280x720');
+  // Periodic state updates must not rewrite the select; an open list on Android redraws on every change.
+  await page.locator('#preset').evaluate(el => { window.presetChanges = 0; new MutationObserver(list => { window.presetChanges += list.length; }).observe(el, { subtree: true, childList: true, attributes: true, characterData: true }); });
+  for (let i = 0; i < 3; i++) { state = { ...state, frame: state.frame + 1 }; editor.send(JSON.stringify(state)); }
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => window.presetChanges), 0, 'State updates must not touch the resolution select');
   await page.locator('#preset').selectOption('720x1280');
   await expect.poll(() => state.width).toBe(720);
   await expect(page.locator('#preset')).toHaveValue('720x1280');

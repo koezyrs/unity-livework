@@ -134,6 +134,7 @@ $('preset').onchange = e => {
   }
   if (value !== 'current') resize(...value.split('x').map(Number));
 };
+$('preset').addEventListener('blur', () => renderControls());
 $('qualities').onchange = e => {
   if (e.target.name === 'quality' && !command('SetStreamQuality', { quality: e.target.value })) renderControls();
 };
@@ -190,12 +191,15 @@ function renderControls() {
   $('pause').disabled = !ready || !active; $('pause').setAttribute('aria-pressed', String(Boolean(paused)));
   $('step').disabled = !ready || !paused || !active;
   for (const input of $('settings').querySelectorAll('input[type="radio"]')) input.disabled = !ready;
-  $('preset').disabled = !ready; $('resize').disabled = !ready;
+  if ($('preset').disabled !== !ready) $('preset').disabled = !ready;
+  $('resize').disabled = !ready;
   if (state.quality) choose('quality', state.quality);
   if (state.width) {
-    const size = state.width + 'x' + state.height;
-    $('currentOption').textContent = state.width + ' × ' + state.height + ' · Custom';
-    if (!resolutionEdited && $('dimensions').hidden) $('preset').value = [...$('preset').options].some(o => o.value === size) ? size : 'current';
+    // Touch the select only on real changes: Android redraws an open list on every DOM change.
+    const size = state.width + 'x' + state.height, label = state.width + ' × ' + state.height + ' · Custom';
+    if ($('currentOption').textContent !== label) $('currentOption').textContent = label;
+    const value = [...$('preset').options].some(o => o.value === size) ? size : 'current';
+    if (!resolutionEdited && $('dimensions').hidden && $('preset').value !== value && document.activeElement !== $('preset')) $('preset').value = value;
   }
 }
 function updateState(next) {

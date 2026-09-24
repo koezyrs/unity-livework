@@ -39,6 +39,10 @@ Requirements: Android SDK with platform 36, and JDK 17 or newer
 The APK is written to `app/build/outputs/apk/debug/LiveWork-<version>-debug.apk`.
 Install it with `adb install -r <file>`, or copy it to the phone.
 
+The debug app uses the application ID `com.livework.client.debug` and the name
+**LiveWork Dev**, so you can install it next to the release app. Both apps open
+`livework://` links, so Android asks which one to use when you scan a QR code.
+
 The app version comes from `packages/com.livework.unity/package.json`, so the app
 and the Unity package always share one version.
 

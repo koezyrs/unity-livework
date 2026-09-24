@@ -5,7 +5,7 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-09-25
 
 ### Added
 
@@ -74,5 +74,5 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - One Git URL installation with the patched Render Streaming runtime and the web
   service included.
 
-[Unreleased]: https://github.com/koezyrs/unity-livework/compare/v0.2.0...HEAD
+[1.0.0]: https://github.com/koezyrs/unity-livework/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/koezyrs/unity-livework/releases/tag/v0.2.0

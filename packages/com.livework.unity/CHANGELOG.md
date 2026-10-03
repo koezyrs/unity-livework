@@ -5,6 +5,36 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-03
+
+### Fixed
+
+- Installing the package no longer adds WebRTC and Render Streaming to player
+  builds. A build step removes the LiveWork, Render Streaming, and WebRTC
+  assemblies and the native WebRTC library from the build. If your game uses
+  WebRTC itself, add `com.unity.webrtc` to your project's `Packages/manifest.json`
+  and LiveWork leaves the build unchanged.
+- Touch input is no longer silently dropped when the connection is slow. Only
+  merged movement updates are shed while the data channel is congested; touch
+  down/up/cancel, key presses, and heartbeats are always delivered in order, so
+  gestures no longer vanish or leave a stuck touch in the game.
+- A touch that starts just outside the video area (letterbox bars) is clamped
+  into the game instead of ignoring the whole gesture.
+- After Play, resolution, or quality changes recreate the stream, the Editor
+  republishes its state as soon as it sees input for the older stream, so the
+  browser resynchronizes within one round trip instead of dropping input for up
+  to half a second.
+- An Editor stall that overflows the input queue now cancels held touches and
+  sheds the backlog while keeping the channel working, and games no longer see
+  a finger whose phase jumps to Moved/Ended without a Began.
+- The Unity Editor no longer keeps encoding, repainting, and draining native
+  WebRTC work while no viewer is connected. The service now tells the Editor
+  when a controller arrives and leaves; an idle Editor keeps the session alive
+  but suspends capture, so long sessions do not grow memory for nobody.
+- Repeated stream restarts (Play Mode reloads, quality changes, reconnects) no
+  longer pile up stopped signaling instances in a static Render Streaming set
+  until garbage collection runs.
+
 ## [1.1.0] - 2026-09-25
 
 ### Added
@@ -104,6 +134,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - One Git URL installation with the patched Render Streaming runtime and the web
   service included.
 
+[1.1.1]: https://github.com/koezyrs/unity-livework/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/koezyrs/unity-livework/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/koezyrs/unity-livework/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/koezyrs/unity-livework/releases/tag/v0.2.0

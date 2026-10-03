@@ -129,8 +129,8 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
         ws.on('close', () => { signaling.remove(ws); if (local) signalEditor = undefined; else { signalBrowser = undefined; send(editor, { v: 1, type: 'resetInput' }); } });
         return;
       }
-      if (local) { editor = ws; clearTimeout(editorLostTimer); send(ws, { v: 1, type: 'hello' }); }
-      else { controller = ws; send(ws, state); send(ws, scenes); send(ws, { v: 1, type: 'logs', entries: logs, replay: true }); }
+      if (local) { editor = ws; clearTimeout(editorLostTimer); send(ws, { v: 1, type: 'hello' }); send(ws, { v: 1, type: 'viewer', active: controller !== undefined }); }
+      else { controller = ws; send(editor, { v: 1, type: 'viewer', active: true }); send(ws, state); send(ws, scenes); send(ws, { v: 1, type: 'logs', entries: logs, replay: true }); }
       ws.on('message', bytes => {
         let msg; try { msg = JSON.parse(bytes.toString()); } catch { return ws.close(1008, 'Invalid JSON'); }
         if (msg.v !== 1) return ws.close(1008, 'Unsupported protocol');
@@ -170,7 +170,7 @@ export async function createLiveWork({ port = 8080, host = '127.0.0.1', code = S
           if (state.state === 'reloading') { clearTimeout(editorLostTimer); editorLostTimer = setTimeout(() => { if (!editor) setOffline(); }, 60000); }
           else setOffline();
         }
-        else { clearPending('Controller disconnected; command was not replayed'); controller = undefined; signalBrowser?.close(); send(editor, { v: 1, type: 'resetInput' }); }
+        else { clearPending('Controller disconnected; command was not replayed'); controller = undefined; signalBrowser?.close(); send(editor, { v: 1, type: 'resetInput' }); send(editor, { v: 1, type: 'viewer', active: false }); }
       });
     });
   });

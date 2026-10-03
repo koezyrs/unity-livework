@@ -32,6 +32,12 @@ tried to apply the second one and logged `Called in wrong state: stable`. The
 connection was not affected, but the error reached the LiveWork web console as a
 false alarm. Offers and valid answers keep upstream behavior.
 
+`WebSocketSignaling.cs`: remove the instance from the static `instances` set in
+`Stop()`. Upstream removed it only in the finalizer, so LiveWork's repeated
+session restarts (every Play Mode reload, quality change, or reconnect)
+accumulated stopped instances with their signaling threads and wait handles
+between GC runs. See issue #3.
+
 `service/upstream` contains unmodified signaling handler/types from WebApp;
 `service/public/upstream` contains unmodified browser RenderStreaming/Peer/logger
 modules. The LiveWork server wraps signaling with pairing and single-controller

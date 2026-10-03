@@ -74,12 +74,12 @@ nếu bạn dùng connection mode đó. Sau khi cài Node.js, khởi
 3. Dán URL sau:
 
    ```text
-   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.1.0
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.1.1
    ```
 
 4. Chờ Unity cài các package phụ thuộc và compile xong.
 
-Bỏ `#v1.1.0` nếu muốn luôn lấy code mới nhất từ nhánh `main`.
+Bỏ `#v1.1.1` nếu muốn luôn lấy code mới nhất từ nhánh `main`.
 
 ### 2. Cài app Android (không bắt buộc)
 
@@ -229,6 +229,9 @@ LiveWork không thay đổi cài đặt input, action map, input module hay scri
 - Stream tối đa 30 FPS.
 - Game chạy trên máy host. LiveWork không kiểm tra được hiệu năng trên thiết bị,
   native plugin hay hành vi của bản build Android.
+- LiveWork chỉ chạy trong Editor. Nó tự loại mình, Render Streaming và WebRTC
+  khỏi bản build player. Nếu game của bạn dùng WebRTC, hãy thêm `com.unity.webrtc`
+  vào `Packages/manifest.json` của project để giữ nó trong bản build.
 - Giữ máy host không ngủ và Unity không bị thu nhỏ. Máy ngủ, khoá màn hình hoặc
   thu nhỏ Editor sẽ làm dừng stream.
 - Chưa hỗ trợ: máy host macOS và Linux, app iOS, tay cầm, cảm biến, bàn phím ảo

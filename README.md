@@ -76,12 +76,12 @@ after you install Node.js so Unity sees the new PATH.
 3. Paste this URL:
 
    ```text
-   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.1.0
+   https://github.com/koezyrs/unity-livework.git?path=/packages/com.livework.unity#v1.1.1
    ```
 
 4. Wait for Unity to install the dependencies and compile.
 
-Remove `#v1.1.0` to always get the latest code from `main`.
+Remove `#v1.1.1` to always get the latest code from `main`.
 
 ### 2. Install the Android app (optional)
 
@@ -233,6 +233,9 @@ game scripts.
 - The stream runs at up to 30 FPS.
 - The game runs on the host. LiveWork does not test device performance, native
   plugins, or Android build behavior.
+- LiveWork works only in the Editor. It removes itself, Render Streaming, and
+  WebRTC from player builds. If your game uses WebRTC, add `com.unity.webrtc` to
+  your project's `Packages/manifest.json` to keep it in the build.
 - Keep the host awake and Unity visible. Sleep, a locked screen, and a minimized
   Editor stop the stream.
 - Not supported yet: macOS and Linux hosts, iOS app, gamepads, sensors, on-screen

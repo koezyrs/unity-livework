@@ -79,7 +79,11 @@ namespace LiveWork
             if (listener != null) audioSender.audioListener = listener;
         }
 
-        public void Tick() { Unity.WebRTC.WebRTC.ExecutePendingTasks(2); scheduler?.Tick(); }
+        // Draining native WebRTC tasks on every Editor update keeps the pending-task
+        // queue from growing into unbounded native memory during long sessions.
+        public void Drain() { Unity.WebRTC.WebRTC.ExecutePendingTasks(4); }
+
+        public void Tick() { scheduler?.Tick(); }
 
         void OnDestroy()
         {

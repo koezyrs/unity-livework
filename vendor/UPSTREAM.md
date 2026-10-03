@@ -32,6 +32,17 @@ tried to apply the second one and logged `Called in wrong state: stable`. The
 connection was not affected, but the error reached the LiveWork web console as a
 false alarm. Offers and valid answers keep upstream behavior.
 
+`Runtime/Unity.RenderStreaming.Runtime.asmdef`: compile for the Editor
+platform only and set `autoReferenced` to `false`. Upstream also builds the
+assembly for the player platforms in its platform list, and the automatic
+reference pulls `Unity.RenderStreaming` and `Unity.WebRTC` (including the
+native libwebrtc plugins) into every player build of any project with an
+asmdef-less assembly. LiveWork streams the Editor Game View only, so the
+vendored runtime has no player use. The bundled copy in
+`ThirdParty/RenderStreaming` carries the same change. Projects that use Render
+Streaming classes directly must add the assembly reference themselves, which
+upstream code does not otherwise rely on.
+
 `service/upstream` contains unmodified signaling handler/types from WebApp;
 `service/public/upstream` contains unmodified browser RenderStreaming/Peer/logger
 modules. The LiveWork server wraps signaling with pairing and single-controller

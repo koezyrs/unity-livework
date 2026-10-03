@@ -5,6 +5,17 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Installing the package no longer adds WebRTC and Render Streaming code to
+  player builds. The package is now a tool package, its runtime assembly only
+  compiles for the Editor, and the bundled Render Streaming assembly no longer
+  auto-references itself or compiles for player platforms. Nothing from
+  `com.unity.webrtc`, including the native libwebrtc library, is included in a
+  player build anymore.
+
 ## [1.1.0] - 2026-09-25
 
 ### Added

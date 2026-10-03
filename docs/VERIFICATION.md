@@ -1,3 +1,24 @@
+# Verification — 2026-10-03 (player builds)
+
+## WebRTC and Render Streaming left out of player builds (issue #1)
+
+Checked on Windows with Unity 6000.3.11f1 and Node 22.20.0, using Windows
+64-bit Mono player builds of the sample:
+
+- Without `com.unity.webrtc` in the project manifest, the build succeeded and
+  contained no `LiveWork.Runtime.dll`, `Unity.RenderStreaming.dll`,
+  `Unity.WebRTC.dll`, `websocket-sharp.dll`, or native `webrtc.dll` (87 MB
+  instead of 102 MB). The player started without errors about these assemblies.
+- With `com.unity.webrtc` in the project manifest, all five files stayed in the
+  build.
+- Service tests, both bundle checks, and browser UI checks passed. The live
+  sample workflow and recovery suites passed every check, so streaming in the
+  Editor is unchanged.
+
+What this does **not** verify: Android and iOS builds (no build module on this
+machine), IL2CPP builds, and Unity 6000.2.7f2. The issue asks for a real Android
+build check that `libwebrtc` is absent from the APK; that is still open.
+
 # Verification — 2026-09-20
 
 ## UI and single-URL packaging refresh

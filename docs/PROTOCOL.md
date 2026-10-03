@@ -15,6 +15,8 @@ have `v: 1`. JSON is capped at 128 KiB; data channel input is capped at 8 KiB.
   Streaming signaling. Offers and answers are bidirectional for renegotiation.
 - WebRTC data channel `livework-input`: ordered/reliable gameplay input. Neither
   gameplay input nor editor commands are accepted through the public static pages.
+  The browser sheds merged movement updates while the channel is congested but
+  always delivers gesture boundaries, keys, buttons, `reset` and `heartbeat`.
 
 ## Editor commands and state
 
@@ -46,7 +48,10 @@ State contains `state`, `message`, `width`, `height`, `revision`, `frame`,
 else the active Editor scene. It is empty for an unsaved scene. `state` is one of
 `offline`, `stopped`, `playing`, `paused`, `reloading`, `error`. Connection setup
 is displayed as `connecting` by the client. `revision` changes on every recreated
-stream; input from an old revision is discarded.
+stream; input from an old revision is discarded. The Editor publishes the state
+immediately when it recreates a stream, and again within 100 ms after it sees
+input stamped with a stale revision, so the browser resynchronizes within one
+round trip instead of the 0.5 s broadcast cadence.
 
 ## Scenes and logs
 
@@ -77,10 +82,15 @@ Each message includes `v: 1`, current `revision`, and `type`:
   relative `dx/dy`, `locked`, `scroll` in browser pixel units.
 - `touch`: stable `id` 1–10, normalized `x/y`, and `phase` (`began`, `moved`,
   `ended`, `canceled`). Each finger's transitions preserve frame order for Legacy.
+  A touch that starts just outside the video rect is clamped into it instead of
+  being ignored. The Editor reconstructs a lost `began`: a `moved` for an unknown
+  finger starts the gesture, and an `ended` for an unknown finger becomes a
+  complete tap (`began` then `ended` in one frame).
 - `reset`: release this session's input devices and cancel touches.
 - `heartbeat`: keeps held input valid. No input heartbeat for two seconds releases
   held state. Control/signaling disconnect, blur, hide, resolution changes and
-  Stop also reset input.
+  Stop also reset input. When the Editor input queue overflows, it cancels held
+  touches and sheds the backlog instead of resetting everything.
 
 Backend chooses New, Legacy or Both from the project's existing Active Input
 Handling. Legacy receives only touch; it does not receive virtual keyboard/mouse

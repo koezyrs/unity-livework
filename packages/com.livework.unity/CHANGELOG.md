@@ -5,6 +5,16 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Installing the package no longer adds WebRTC and Render Streaming to player
+  builds. A build step removes the LiveWork, Render Streaming, and WebRTC
+  assemblies and the native WebRTC library from the build. If your game uses
+  WebRTC itself, add `com.unity.webrtc` to your project's `Packages/manifest.json`
+  and LiveWork leaves the build unchanged.
+
 ## [1.1.0] - 2026-09-25
 
 ### Added

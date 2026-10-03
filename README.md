@@ -233,6 +233,9 @@ game scripts.
 - The stream runs at up to 30 FPS.
 - The game runs on the host. LiveWork does not test device performance, native
   plugins, or Android build behavior.
+- LiveWork works only in the Editor. It removes itself, Render Streaming, and
+  WebRTC from player builds. If your game uses WebRTC, add `com.unity.webrtc` to
+  your project's `Packages/manifest.json` to keep it in the build.
 - Keep the host awake and Unity visible. Sleep, a locked screen, and a minimized
   Editor stop the stream.
 - Not supported yet: macOS and Linux hosts, iOS app, gamepads, sensors, on-screen

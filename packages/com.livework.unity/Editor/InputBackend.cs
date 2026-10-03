@@ -23,6 +23,7 @@ namespace LiveWork.Editor
     {
         readonly Queue<RemoteInput> queue = new Queue<RemoteInput>();
         readonly HashSet<Key> keys = new HashSet<Key>();
+        readonly HashSet<int> holding = new HashSet<int>();
         readonly Dictionary<int, UnityEngine.Touch> legacyTouches = new Dictionary<int, UnityEngine.Touch>();
         readonly HashSet<int> changedTouches = new HashSet<int>();
         readonly MethodInfo simulate = typeof(Input).GetMethod("SimulateTouch", BindingFlags.Static | BindingFlags.NonPublic);
@@ -74,15 +75,24 @@ namespace LiveWork.Editor
             lastMessage = UnityEditor.EditorApplication.timeSinceStartup;
         }
 
+        bool staleSeen;
+        /// <summary>Set when input arrives for another stream revision; the host republishes state so the browser resynchronizes.</summary>
+        public bool TakeStaleRevision() { var seen = staleSeen; staleSeen = false; return seen; }
+
         public void Receive(string json)
         {
             try {
                 var msg = JsonUtility.FromJson<RemoteInput>(json);
-                if (msg == null || msg.v != 1 || msg.revision != revision) return;
+                if (msg == null || msg.v != 1) return;
+                // Input for another stream revision is discarded, but it proves the browser
+                // link is alive and waiting for the current state, so keep the watchdog fed.
+                if (msg.revision != revision) { staleSeen = true; lastMessage = UnityEditor.EditorApplication.timeSinceStartup; return; }
                 lastMessage = UnityEditor.EditorApplication.timeSinceStartup;
                 if (msg.type == "heartbeat") return;
                 if (msg.type == "reset") { Reset(); return; }
-                if (queue.Count >= 256) { Reset(); return; }
+                // Overflow usually means the editor stalled for a moment; shed the backlog
+                // and cancel held touches so nothing sticks, but keep receiving input.
+                if (queue.Count >= 256) SoftReset();
                 queue.Enqueue(msg);
             } catch (ArgumentException) { Reset(); }
         }
@@ -125,14 +135,18 @@ namespace LiveWork.Editor
                     changedTouches.Add(msg.id);
                     var point = new Vector2(Mathf.Clamp01(msg.x) * width, (1 - Mathf.Clamp01(msg.y)) * height);
                     var phase = msg.phase == "began" ? TouchPhase.Began : msg.phase == "moved" ? TouchPhase.Moved : msg.phase == "ended" ? TouchPhase.Ended : TouchPhase.Canceled;
-                    if (NewInput) { InputSystem.QueueStateEvent(touchscreen, new TouchState { touchId = msg.id, position = point, phase = phase, pressure = 1 }); touchscreen.MakeCurrent(); }
-                    if (Legacy) {
-                        simulation.SetValue(null, true);
-                        legacyTouches.TryGetValue(msg.id, out var previousTouch);
-                        var touch = new UnityEngine.Touch { fingerId = msg.id, position = point, rawPosition = point, deltaPosition = point - previousTouch.position, deltaTime = Time.unscaledDeltaTime, tapCount = 1, pressure = 1, maximumPossiblePressure = 1,
-                            phase = phase == TouchPhase.Began ? UnityEngine.TouchPhase.Began : phase == TouchPhase.Moved ? UnityEngine.TouchPhase.Moved : phase == TouchPhase.Ended ? UnityEngine.TouchPhase.Ended : UnityEngine.TouchPhase.Canceled };
-                        simulate.Invoke(null, new object[] { touch });
-                        if (phase == TouchPhase.Ended || phase == TouchPhase.Canceled) legacyTouches.Remove(msg.id); else legacyTouches[msg.id] = touch;
+                    var held = holding.Contains(msg.id);
+                    if (phase == TouchPhase.Began) {
+                        // The browser recycles ids; close the stale gesture before the new one.
+                        if (held) EmitTouch(msg.id, point, TouchPhase.Canceled);
+                        holding.Add(msg.id);
+                        EmitTouch(msg.id, point, TouchPhase.Began);
+                    } else if (held || phase != TouchPhase.Canceled) {
+                        // A boundary can be lost on a congested link or across a stream change;
+                        // restart the gesture so games never see a finger without a Began.
+                        if (!held) { holding.Add(msg.id); EmitTouch(msg.id, point, TouchPhase.Began); }
+                        EmitTouch(msg.id, point, phase);
+                        if (phase != TouchPhase.Moved) holding.Remove(msg.id);
                     }
                 }
             }
@@ -142,9 +156,35 @@ namespace LiveWork.Editor
             }
         }
 
+        void EmitTouch(int id, Vector2 point, TouchPhase phase)
+        {
+            if (NewInput) { InputSystem.QueueStateEvent(touchscreen, new TouchState { touchId = id, position = point, phase = phase, pressure = 1 }); touchscreen.MakeCurrent(); }
+            if (Legacy) {
+                simulation.SetValue(null, true);
+                legacyTouches.TryGetValue(id, out var previousTouch);
+                var touch = new UnityEngine.Touch { fingerId = id, position = point, rawPosition = point, deltaPosition = point - previousTouch.position, deltaTime = Time.unscaledDeltaTime, tapCount = 1, pressure = 1, maximumPossiblePressure = 1,
+                    phase = phase == TouchPhase.Began ? UnityEngine.TouchPhase.Began : phase == TouchPhase.Moved ? UnityEngine.TouchPhase.Moved : phase == TouchPhase.Ended ? UnityEngine.TouchPhase.Ended : UnityEngine.TouchPhase.Canceled };
+                simulate.Invoke(null, new object[] { touch });
+                if (phase == TouchPhase.Ended || phase == TouchPhase.Canceled) legacyTouches.Remove(id); else legacyTouches[id] = touch;
+            }
+        }
+
+        // Overflow recovery: cancel held touches and shed the backlog, but keep the
+        // devices working; keys and mouse are not gesture boundaries and recover from
+        // their own follow-up events.
+        void SoftReset()
+        {
+            queue.Clear(); holding.Clear();
+            if (NewInput) InputSystem.ResetDevice(touchscreen);
+            if (Legacy) {
+                foreach (var pair in legacyTouches) { var touch = pair.Value; touch.phase = UnityEngine.TouchPhase.Canceled; simulate.Invoke(null, new object[] { touch }); }
+                legacyTouches.Clear();
+            }
+        }
+
         public void Reset()
         {
-            queue.Clear(); keys.Clear();
+            queue.Clear(); keys.Clear(); holding.Clear();
             if (NewInput) { InputSystem.ResetDevice(keyboard); InputSystem.ResetDevice(mouse); InputSystem.ResetDevice(touchscreen); }
             if (Legacy) {
                 foreach (var pair in legacyTouches) { var touch = pair.Value; touch.phase = UnityEngine.TouchPhase.Canceled; simulate.Invoke(null, new object[] { touch }); }

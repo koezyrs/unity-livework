@@ -14,6 +14,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   assemblies and the native WebRTC library from the build. If your game uses
   WebRTC itself, add `com.unity.webrtc` to your project's `Packages/manifest.json`
   and LiveWork leaves the build unchanged.
+- Touch input is no longer silently dropped when the connection is slow. Only
+  merged movement updates are shed while the data channel is congested; touch
+  down/up/cancel, key presses, and heartbeats are always delivered in order, so
+  gestures no longer vanish or leave a stuck touch in the game.
+- A touch that starts just outside the video area (letterbox bars) is clamped
+  into the game instead of ignoring the whole gesture.
+- After Play, resolution, or quality changes recreate the stream, the Editor
+  republishes its state as soon as it sees input for the older stream, so the
+  browser resynchronizes within one round trip instead of dropping input for up
+  to half a second.
+- An Editor stall that overflows the input queue now cancels held touches and
+  sheds the backlog while keeping the channel working, and games no longer see
+  a finger whose phase jumps to Moved/Ended without a Began.
 
 ## [1.1.0] - 2026-09-25
 

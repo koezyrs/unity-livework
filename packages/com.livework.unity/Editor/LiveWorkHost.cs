@@ -36,7 +36,7 @@ namespace LiveWork.Editor
         static readonly ConcurrentQueue<string> inbox = new ConcurrentQueue<string>();
         static LiveWorkStream stream;
         static InputBackend input;
-        static double nextConnect, nextState, nextCapture;
+        static double nextConnect, nextState, nextCapture, nextStalePublish;
         static int revision;
         static Command pending;
         static double pendingSince;
@@ -206,6 +206,11 @@ namespace LiveWork.Editor
                 try { StartStream(); } catch (Exception ex) { error = ex.Message; StopStream(); Debug.LogException(ex); }
             }
             input?.CheckTimeout();
+            // Stale-revision input means the browser missed the new stream state; republish
+            // soon (throttled) so it resynchronizes within a round trip instead of 500 ms.
+            if (now >= nextStalePublish) {
+                if (input?.TakeStaleRevision() == true) { nextStalePublish = now + 0.1; Publish(); }
+            }
             if (stream != null && now >= nextCapture) {
                 // Keep a fixed cadence instead of drifting by the late part of each tick.
                 nextCapture = Math.Max(nextCapture + 1.0 / 30, now);

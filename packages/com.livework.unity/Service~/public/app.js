@@ -1,6 +1,6 @@
 import { RenderStreaming } from './upstream/renderstreaming.js';
 import { LiveWorkSignaling } from './signaling.js';
-import { bindInput } from './input.js';
+import { bindInput, inputGate } from './input.js';
 import { bindScenes } from './scenes.js';
 import { bindConsole } from './console.js';
 const $ = id => document.getElementById(id);
@@ -47,7 +47,8 @@ function showWorkspace(show) {
   // Tells the LiveWork Android app that the page is ready, so it can hide its loading screen.
   window.LiveWorkApp?.screen(show ? 'workspace' : 'connect');
 }
-const sendInput = data => { if (channel?.readyState === 'open' && channel.bufferedAmount < 65536) channel.send(JSON.stringify({ v: 1, revision: state.revision, ...data })); };
+const gate = inputGate(() => channel, (ch, data) => ch.send(JSON.stringify({ v: 1, revision: state.revision, ...data })));
+const sendInput = (data, boundary = false) => gate.send(data, boundary);
 const resetInput = bindInput(stage, video, sendInput, () => mediaReady && state.state === 'playing' && $('contextMenu').hidden);
 
 async function pair(code) {
@@ -275,7 +276,8 @@ async function startMedia() {
   rs.onConnect = () => {
     if (ticket !== generation) return;
     channel = rs.createDataChannel('livework-input');
-    channel.onopen = () => sendInput({ type: 'reset' });
+    gate.attach(channel);
+    channel.onopen = () => { gate.resume(); sendInput({ type: 'reset' }, true); };
     channel.onclose = () => { if (ticket === generation) retryMedia(); };
     rs.addTransceiver('video', { direction: 'recvonly' }); rs.addTransceiver('audio', { direction: 'recvonly' });
   };
@@ -313,7 +315,8 @@ function retryMedia() {
 }
 video.addEventListener('playing', () => { mediaReady = true; canvas.hidden = true; updateState(state); });
 setInterval(() => {
-  sendInput({ type: 'heartbeat' });
+  // Heartbeat is a boundary: dropping it makes the Editor reset held input mid-gesture.
+  sendInput({ type: 'heartbeat' }, true);
   for (const [id, action] of pending) if (Date.now() - action.time > action.timeout) {
     pending.delete(id); resolutionEdited = false; renderControls();
     showMessage('No confirmation received. Check the Editor before retrying.');

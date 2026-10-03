@@ -73,6 +73,23 @@ controller. When a controller connects, the service sends `state`, the latest
 - The Editor sends at most 100 entries every 250 ms and 200 per second. Extra
   entries are dropped and reported by one warning entry.
 
+## Viewer presence
+
+The service tells the Editor whether a controller is watching:
+
+```json
+{"v":1,"type":"viewer","active":true}
+```
+
+It sends `active: true` when the controller connects, `active: false` when the
+controller leaves, and the current value right after `hello` on every Editor
+reconnect. While no viewer is active, the Editor keeps the session and the
+signaling socket alive but suspends the capture, audio, and Game View repaint
+loop, so an Editor left open does not spend encode and GPU work on nobody. The
+next viewer resumes the stream without recreating it. When the Editor cannot
+reach the service (or the service predates this message) it keeps capturing, so
+video still works.
+
 ## Gameplay input
 
 Each message includes `v: 1`, current `revision`, and `type`:

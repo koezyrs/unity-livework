@@ -5,6 +5,18 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The Unity Editor no longer keeps encoding, repainting, and draining native
+  WebRTC work while no viewer is connected. The service now tells the Editor
+  when a controller arrives and leaves; an idle Editor keeps the session alive
+  but suspends capture, so long sessions do not grow memory for nobody.
+- Repeated stream restarts (Play Mode reloads, quality changes, reconnects) no
+  longer pile up stopped signaling instances in a static Render Streaming set
+  until garbage collection runs.
+
 ## [1.1.0] - 2026-09-25
 
 ### Added

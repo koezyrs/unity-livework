@@ -21,7 +21,7 @@ namespace LiveWork.Editor
 {
     [Serializable] public class HostConfig { public int port, pid; public string host, code, hostToken, mode; }
     public enum ConnectionMode { Lan, Tailscale, ZeroTier }
-    [Serializable] public class Command { public int v, width, height; public string type, id, command, quality, scene; }
+    [Serializable] public class Command { public int v, width, height; public string type, id, command, quality, scene; public bool active; }
     [Serializable] public class HostState {
         public int v = 1, width, height, revision, frame;
         public string type = "state", state, message, inputMode, quality, scene, startScene, unity = Application.unityVersion;
@@ -43,6 +43,9 @@ namespace LiveWork.Editor
         static int stepStart;
         static bool compileError, reloading;
         static bool playReady;
+        // True until the service reports otherwise, so an older service bundle that
+        // never sends the viewer message keeps today's always-capture behavior.
+        static bool viewing = true;
         static bool originalBackground;
         static string error;
         // Set while Unity changes Play Mode, so the browser can say why the Editor is reloading.
@@ -198,29 +201,33 @@ namespace LiveWork.Editor
                     var cmd = JsonUtility.FromJson<Command>(json);
                     if (cmd.type == "closed") { socket?.CloseAsync(); socket = null; input?.Reset(); StopStream(); Status = "Disconnected"; }
                     else if (cmd.type == "resetInput") input?.Reset();
+                    else if (cmd.type == "viewer") viewing = cmd.active;
                     else if (cmd.type == "hello") { LiveWorkScenes.Invalidate(); Publish(); }
                     else if (cmd.type == "command") Execute(cmd);
                 } catch (Exception ex) { error = ex.Message; }
             }
-            if (playReady && EditorApplication.isPlaying && !reloading && !EditorApplication.isCompiling && socket?.ReadyState == WebSocketState.Open && stream == null && error == null) {
+            if (playReady && EditorApplication.isPlaying && !reloading && !EditorApplication.isCompiling && socket?.ReadyState == WebSocketState.Open && stream == null && error == null && viewing) {
                 try { StartStream(); } catch (Exception ex) { error = ex.Message; StopStream(); Debug.LogException(ex); }
             }
             input?.CheckTimeout();
-            if (stream != null && now >= nextCapture) {
-                // Keep a fixed cadence instead of drifting by the late part of each tick.
-                nextCapture = Math.Max(nextCapture + 1.0 / 30, now);
-                try {
-                    // Play Mode repaints the Game View every frame; a paused game needs a manual repaint.
-                    if (EditorApplication.isPaused) GameViewBridge.View.Repaint();
-                    var source = GameViewBridge.Texture;
-                    if (source != null && stream.Texture != null) {
-                        // WebRTC's default texture copy flips Direct3D render textures.
-                        if (SystemInfo.graphicsUVStartsAtTop) Graphics.Blit(source, stream.Texture, new Vector2(1, -1), new Vector2(0, 1));
-                        else Graphics.Blit(source, stream.Texture);
-                    }
-                    stream.RefreshAudio();
-                    stream.Tick();
-                } catch (Exception ex) { error = ex.Message; }
+            if (stream != null) {
+                try { stream.Drain(); } catch (Exception ex) { error = ex.Message; }
+                if (viewing && now >= nextCapture) {
+                    // Keep a fixed cadence instead of drifting by the late part of each tick.
+                    nextCapture = Math.Max(nextCapture + 1.0 / 30, now);
+                    try {
+                        // Play Mode repaints the Game View every frame; a paused game needs a manual repaint.
+                        if (EditorApplication.isPaused) GameViewBridge.View.Repaint();
+                        var source = GameViewBridge.Texture;
+                        if (source != null && stream.Texture != null) {
+                            // WebRTC's default texture copy flips Direct3D render textures.
+                            if (SystemInfo.graphicsUVStartsAtTop) Graphics.Blit(source, stream.Texture, new Vector2(1, -1), new Vector2(0, 1));
+                            else Graphics.Blit(source, stream.Texture);
+                        }
+                        stream.RefreshAudio();
+                        stream.Tick();
+                    } catch (Exception ex) { error = ex.Message; }
+                }
             }
             CompletePending(now);
             if (socket?.ReadyState == WebSocketState.Open) {

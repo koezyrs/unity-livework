@@ -29,7 +29,10 @@ test('pairing, exclusive control, command validation, and reconnect without repl
     let reply = message(control, m => m.id === 'offline');
     control.send(JSON.stringify({ v: 1, type: 'command', command: 'Play', id: 'offline' }));
     assert.equal((await reply).ok, false);
-    const editor = await open(`${wsurl}/editor?token=${app.hostToken}`);
+    const editor = await connect(`${wsurl}/editor?token=${app.hostToken}`);
+    // The editor learns viewer presence right after hello, so it can suspend capture when nobody watches.
+    assert.equal(editor.first.find(m => m.type === 'hello') !== undefined, true);
+    assert.equal(editor.first.find(m => m.type === 'viewer').active, true);
     const state = message(control, m => m.type === 'state');
     editor.send(JSON.stringify({ v: 1, type: 'state', state: 'stopped', width: 1280, height: 720 }));
     assert.equal((await state).state, 'stopped');
@@ -46,8 +49,13 @@ test('pairing, exclusive control, command validation, and reconnect without repl
     editor.send(JSON.stringify({ v: 1, type: 'result', id: 'play1', ok: true }));
     assert.equal((await reply).ok, true);
     const reset = message(editor, m => m.type === 'resetInput');
-    control.close(); assert.equal((await reset).v, 1);
+    const idle = message(editor, m => m.type === 'viewer' && m.active === false);
+    control.close();
+    assert.equal((await reset).v, 1);
+    assert.equal((await idle).v, 1);
     const again = await open(`${wsurl}/control`, options);
+    const resumed = message(editor, m => m.type === 'viewer' && m.active === true);
+    assert.equal((await resumed).v, 1);
     assert.equal(app.server.listening, true);
     again.close(); editor.close();
   } finally { await app.close(); }

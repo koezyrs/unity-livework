@@ -77,6 +77,11 @@ namespace Unity.RenderStreaming.Signaling
                     m_signalingThread.Join(1000);
                 }
                 m_signalingThread = null;
+
+                // LiveWork: remove this instance from the static set here instead of
+                // waiting for the finalizer, so repeated sessions do not accumulate
+                // stopped instances (and their signaling threads) between GC runs.
+                instances.Remove(this);
             }
         }
 

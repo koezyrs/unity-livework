@@ -1,3 +1,31 @@
+# Verification — 2026-10-03
+
+## Editor memory during long sessions (issue #3)
+
+The fixes were checked on Windows with Unity 6000.3.11f1, Node 22.20.0, and
+Edge/Playwright in an isolated worktree checkout:
+
+- Six service tests passed, including the new viewer-presence expectations: the
+  Editor receives `viewer: true` after `hello`, `viewer: false` when the
+  controller leaves, and `viewer: true` again when it reconnects.
+- Browser UI checks passed.
+- The live sample workflow passed video/audio, keyboard, mouse, uGUI,
+  multi-touch, pause and exactly one frame, resolution change, browser reload
+  with authenticated reconnect (which exercises the suspend-and-resume path),
+  and clearing a held key after disconnect.
+- The recovery suite passed paused reconnect/resize, touch UI, scene changes,
+  script compile/domain reload reconnect, and compile failure/fix recovery.
+  One first run timed out waiting for input after the domain reload while the
+  fresh project was still importing; the immediate rerun passed every check.
+- Both generated bundle checks and `git diff --check` passed.
+
+What this does **not** verify: the 2–4 h Unity Profiler / Memory Profiler session
+from the issue's verification plan. Native memory growth over hours, the
+restart-churn measurement (50 quality toggles), and the idle-without-viewer
+native memory comparison were not run. The profiler experiment should confirm
+whether the raised `ExecutePendingTasks` budget (2 ms per 30 Hz tick → 4 ms per
+Editor update) fully drains the native backlog.
+
 # Verification — 2026-09-20
 
 ## UI and single-URL packaging refresh
